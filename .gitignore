@@ -1,0 +1,27 @@
+# IntelliJ 설정
+.idea/
+
+# Spring
+backend/build/
+backend/.gradle/
+backend/out/
+*.class
+*.jar
+
+# Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# 비밀 설정 파일
+.env
+.env.local
+frontend/.env.local
+backend/src/main/resources/application-local.yml
+
+# 실행 로그
+*.log
+
+# OS 파일
+.DS_Store
+Thumbs.db
