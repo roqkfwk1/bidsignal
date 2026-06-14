@@ -27,4 +27,13 @@ public class User extends BaseEntity {
 
     @Column(length = 20)
     private String phoneNumber;
+
+    public static User create(String email, String password, String nickname, String phoneNumber) {
+        User user = new User();
+        user.email = email;
+        user.password = password;
+        user.nickname = nickname;
+        user.phoneNumber = phoneNumber;
+        return user;
+    }
 }
