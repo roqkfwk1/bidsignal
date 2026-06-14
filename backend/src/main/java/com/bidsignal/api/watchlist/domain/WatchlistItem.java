@@ -38,4 +38,20 @@ public class WatchlistItem extends BaseEntity {
 
     @Column(length = 1000)
     private String memo;
+
+    public static WatchlistItem create(User user, Notice notice) {
+        WatchlistItem watchlistItem = new WatchlistItem();
+        watchlistItem.user = user;
+        watchlistItem.notice = notice;
+        watchlistItem.status = WatchlistStatus.REVIEWING;
+        return watchlistItem;
+    }
+
+    public void updateStatus(WatchlistStatus status) {
+        this.status = status;
+    }
+
+    public void updateMemo(String memo) {
+        this.memo = memo;
+    }
 }
