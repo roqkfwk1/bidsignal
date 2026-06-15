@@ -1,5 +1,7 @@
 package com.bidsignal.api.user.service;
 
+import com.bidsignal.api.global.exception.BusinessException;
+import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.user.domain.User;
 import com.bidsignal.api.user.dto.request.UserLoginRequest;
 import com.bidsignal.api.user.dto.request.UserSignupRequest;
@@ -23,7 +25,7 @@ public class UserService {
     public UserResponse signup(UserSignupRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
@@ -44,10 +46,10 @@ public class UserService {
     public UserResponse login(UserLoginRequest request) {
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_LOGIN));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_LOGIN);
         }
 
         return UserResponse.from(user);
@@ -57,7 +59,7 @@ public class UserService {
     public void logout(Long userId) {
 
         if (!userRepository.existsById(userId)) {
-            throw new IllegalArgumentException("사용자를 찾을 수 없습니다. id=" + userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
     }
 
@@ -65,7 +67,7 @@ public class UserService {
     public UserResponse getMyInfo(Long userId) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id=" + userId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return UserResponse.from(user);
     }

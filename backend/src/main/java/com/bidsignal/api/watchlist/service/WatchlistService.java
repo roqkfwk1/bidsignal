@@ -1,5 +1,7 @@
 package com.bidsignal.api.watchlist.service;
 
+import com.bidsignal.api.global.exception.BusinessException;
+import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.notice.repository.NoticeRepository;
 import com.bidsignal.api.user.domain.User;
@@ -28,6 +30,10 @@ public class WatchlistService {
     // 관심 공고 목록 조회
     public List<WatchlistListResponse> getWatchlist(Long userId) {
 
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
         return watchlistItemRepository.findByUserIdWithNotice(userId).stream()
                 .map(WatchlistListResponse::from)
                 .toList();
@@ -38,13 +44,13 @@ public class WatchlistService {
     public WatchlistSaveResponse saveWatchlist(Long userId, Long noticeId) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id=" + userId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         Notice notice = noticeRepository.findById(noticeId)
-                .orElseThrow(() -> new IllegalArgumentException("공고를 찾을 수 없습니다. id=" + noticeId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
 
         if (watchlistItemRepository.existsByUserIdAndNoticeId(userId, noticeId)) {
-            throw new IllegalArgumentException("이미 관심 공고에 저장된 공고입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
         }
 
         WatchlistItem watchlistItem = WatchlistItem.create(user, notice);
@@ -59,7 +65,7 @@ public class WatchlistService {
 
         WatchlistItem watchlistItem = watchlistItemRepository
                 .findByUserIdAndNoticeIdWithNotice(userId, noticeId)
-                .orElseThrow(() -> new IllegalArgumentException("관심 공고를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WATCHLIST_ITEM_NOT_FOUND));
 
         watchlistItemRepository.delete(watchlistItem);
     }
@@ -70,7 +76,7 @@ public class WatchlistService {
 
         WatchlistItem watchlistItem = watchlistItemRepository
                 .findByUserIdAndNoticeIdWithNotice(userId, noticeId)
-                .orElseThrow(() -> new IllegalArgumentException("관심 공고를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WATCHLIST_ITEM_NOT_FOUND));
 
         watchlistItem.updateStatus(request.getStatus());
     }
@@ -81,7 +87,7 @@ public class WatchlistService {
 
         WatchlistItem watchlistItem = watchlistItemRepository
                 .findByUserIdAndNoticeIdWithNotice(userId, noticeId)
-                .orElseThrow(() -> new IllegalArgumentException("관심 공고를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WATCHLIST_ITEM_NOT_FOUND));
 
         watchlistItem.updateMemo(request.getMemo());
     }

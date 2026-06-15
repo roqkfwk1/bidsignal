@@ -1,5 +1,7 @@
 package com.bidsignal.api.notice.service;
 
+import com.bidsignal.api.global.exception.BusinessException;
+import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.notice.dto.request.NoticeSearchRequest;
 import com.bidsignal.api.notice.dto.response.NoticeDetailResponse;
@@ -29,7 +31,7 @@ public class NoticeService {
     public NoticeDetailResponse getNotice(Long id) {
 
         Notice notice = noticeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("공고를 찾을 수 없습니다. id=" + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
 
         return NoticeDetailResponse.from(notice);
     }
