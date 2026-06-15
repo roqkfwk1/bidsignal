@@ -18,3 +18,8 @@ nara:
   api:
     key: ${NARA_API_KEY}
     base-url: https://apis.data.go.kr/1230000/ad/BidPublicInfoService
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION}
+  refresh-token-expiration-ms: ${JWT_REFRESH_TOKEN_EXPIRATION}

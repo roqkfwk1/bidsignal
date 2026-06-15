@@ -10,20 +10,21 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/notices")
+@RequestMapping("/api/watchlist")
 public class WatchlistController {
 
     private final WatchlistService watchlistService;
 
     // 관심 공고 목록 조회
-    @GetMapping("/watchlist")
-    public ResponseEntity<ApiResponse<List<WatchlistListResponse>>> getWatchlist(@RequestParam Long userId) {
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<WatchlistListResponse>>> getWatchlist(@AuthenticationPrincipal Long userId) {
 
         List<WatchlistListResponse> response = watchlistService.getWatchlist(userId);
 
@@ -31,8 +32,8 @@ public class WatchlistController {
     }
 
     // 관심 공고 저장
-    @PostMapping("/{id}/watchlist")
-    public ResponseEntity<ApiResponse<WatchlistSaveResponse>> saveWatchlist(@RequestParam Long userId, @PathVariable("id") Long noticeId) {
+    @PostMapping("/{noticeId}")
+    public ResponseEntity<ApiResponse<WatchlistSaveResponse>> saveWatchlist(@AuthenticationPrincipal Long userId, @PathVariable Long noticeId) {
 
         WatchlistSaveResponse response = watchlistService.saveWatchlist(userId, noticeId);
 
@@ -40,8 +41,8 @@ public class WatchlistController {
     }
 
     // 관심 공고 삭제
-    @DeleteMapping("/{id}/watchlist")
-    public ResponseEntity<ApiResponse<Void>> deleteWatchlist(@RequestParam Long userId, @PathVariable("id") Long noticeId) {
+    @DeleteMapping("/{noticeId}")
+    public ResponseEntity<ApiResponse<Void>> deleteWatchlist(@AuthenticationPrincipal Long userId, @PathVariable Long noticeId) {
 
         watchlistService.deleteWatchlist(userId, noticeId);
 
@@ -49,8 +50,8 @@ public class WatchlistController {
     }
 
     // 관심 공고 상태 변경
-    @PatchMapping("/{id}/watchlist/status")
-    public ResponseEntity<ApiResponse<Void>> updateStatus(@RequestParam Long userId, @PathVariable("id") Long noticeId, @Valid @RequestBody WatchlistStatusUpdateRequest request) {
+    @PatchMapping("/{noticeId}/status")
+    public ResponseEntity<ApiResponse<Void>> updateStatus(@AuthenticationPrincipal Long userId, @PathVariable Long noticeId, @Valid @RequestBody WatchlistStatusUpdateRequest request) {
 
         watchlistService.updateStatus(userId, noticeId, request);
 
@@ -58,8 +59,8 @@ public class WatchlistController {
     }
 
     // 관심 공고 메모 수정
-    @PatchMapping("/{id}/watchlist/memo")
-    public ResponseEntity<ApiResponse<Void>> updateMemo(@RequestParam Long userId, @PathVariable("id") Long noticeId, @Valid @RequestBody WatchlistMemoUpdateRequest request) {
+    @PatchMapping("/{noticeId}/memo")
+    public ResponseEntity<ApiResponse<Void>> updateMemo(@AuthenticationPrincipal Long userId, @PathVariable Long noticeId, @Valid @RequestBody WatchlistMemoUpdateRequest request) {
 
         watchlistService.updateMemo(userId, noticeId, request);
 

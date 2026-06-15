@@ -2,9 +2,11 @@ package com.bidsignal.api.user.service;
 
 import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
+import com.bidsignal.api.global.security.jwt.JwtProvider;
 import com.bidsignal.api.user.domain.User;
 import com.bidsignal.api.user.dto.request.UserLoginRequest;
 import com.bidsignal.api.user.dto.request.UserSignupRequest;
+import com.bidsignal.api.user.dto.response.TokenResponse;
 import com.bidsignal.api.user.dto.response.UserResponse;
 import com.bidsignal.api.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
 
     // 회원가입
     @Transactional
@@ -43,7 +46,7 @@ public class UserService {
     }
 
     // 로그인
-    public UserResponse login(UserLoginRequest request) {
+    public TokenResponse login(UserLoginRequest request) {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_LOGIN));
@@ -52,7 +55,13 @@ public class UserService {
             throw new BusinessException(ErrorCode.INVALID_LOGIN);
         }
 
-        return UserResponse.from(user);
+        String accessToken = jwtProvider.generateAccessToken(user.getId());
+        String refreshToken = jwtProvider.generateRefreshToken(user.getId());
+
+        return TokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     // 로그아웃
