@@ -16,10 +16,15 @@ public class NoticeDetailResponse {
     private String bidNtceOrd;
     private String bidNtceNm;
     private String ntceInsttNm;
+    private String dminsttNm;
     private BidType bidType;
+    private String ntceKindNm;
+    private String reNtceYn;
     private String prtcptLmtRgnNm;
     private LocalDateTime bidNtceDt;
+    private LocalDateTime bidBeginDt;
     private LocalDateTime bidClseDt;
+    private LocalDateTime opengDt;
     private LocalDateTime rgstDt;
     private LocalDateTime chgDt;
     private Long bdgtAmt;
@@ -35,10 +40,15 @@ public class NoticeDetailResponse {
                 .bidNtceOrd(notice.getBidNtceOrd())
                 .bidNtceNm(notice.getBidNtceNm())
                 .ntceInsttNm(notice.getNtceInsttNm())
+                .dminsttNm(notice.getDminsttNm())
                 .bidType(notice.getBidType())
+                .ntceKindNm(notice.getNtceKindNm())
+                .reNtceYn(notice.getReNtceYn())
                 .prtcptLmtRgnNm(notice.getPrtcptLmtRgnNm())
                 .bidNtceDt(notice.getBidNtceDt())
+                .bidBeginDt(notice.getBidBeginDt())
                 .bidClseDt(notice.getBidClseDt())
+                .opengDt(notice.getOpengDt())
                 .rgstDt(notice.getRgstDt())
                 .chgDt(notice.getChgDt())
                 .bdgtAmt(notice.getBdgtAmt())

@@ -23,7 +23,10 @@ public enum ErrorCode {
     DUPLICATE_WATCHLIST_ITEM(HttpStatus.CONFLICT, "이미 관심 공고에 저장된 공고입니다."),
 
     // Token
-    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다.");
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."),
+
+    // External API
+    NARA_API_ERROR(HttpStatus.BAD_GATEWAY, "나라장터 API 호출에 실패했습니다.");
 
     private final HttpStatus status;
     private final String message;

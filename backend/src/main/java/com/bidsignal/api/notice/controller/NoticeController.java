@@ -4,7 +4,9 @@ import com.bidsignal.api.global.response.ApiResponse;
 import com.bidsignal.api.notice.dto.request.NoticeSearchRequest;
 import com.bidsignal.api.notice.dto.response.NoticeDetailResponse;
 import com.bidsignal.api.notice.dto.response.NoticeListResponse;
+import com.bidsignal.api.notice.dto.response.NoticeSyncResponse;
 import com.bidsignal.api.notice.service.NoticeService;
+import com.bidsignal.api.notice.service.NoticeSyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class NoticeController {
 
     private final NoticeService noticeService;
+    private final NoticeSyncService noticeSyncService;
 
     // 공고 목록 조회
     @GetMapping
@@ -33,6 +36,15 @@ public class NoticeController {
     public ResponseEntity<ApiResponse<NoticeDetailResponse>> getNotice(@PathVariable Long id) {
 
         NoticeDetailResponse response = noticeService.getNotice(id);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // 나라장터 공고 수동 동기화
+    @PostMapping("/sync")
+    public ResponseEntity<ApiResponse<NoticeSyncResponse>> syncAllBidNotices(@RequestParam String beginDateTime, @RequestParam String endDateTime) {
+
+        NoticeSyncResponse response = noticeSyncService.syncAllBidNotices(beginDateTime, endDateTime);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
