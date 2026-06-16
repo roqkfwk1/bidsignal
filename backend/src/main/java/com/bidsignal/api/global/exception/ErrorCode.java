@@ -20,7 +20,10 @@ public enum ErrorCode {
 
     // Watchlist
     WATCHLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "관심 공고를 찾을 수 없습니다."),
-    DUPLICATE_WATCHLIST_ITEM(HttpStatus.CONFLICT, "이미 관심 공고에 저장된 공고입니다.");
+    DUPLICATE_WATCHLIST_ITEM(HttpStatus.CONFLICT, "이미 관심 공고에 저장된 공고입니다."),
+
+    // Token
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다.");
 
     private final HttpStatus status;
     private final String message;

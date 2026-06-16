@@ -102,4 +102,25 @@ public class JwtProvider {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
+    /**
+     * 토큰 타입을 조회한다.
+     */
+    public String getTokenType(String token) {
+        return parseClaims(token).get("type", String.class);
+    }
+
+    /**
+     * Access Token인지 확인한다.
+     */
+    public boolean isAccessToken(String token) {
+        return "access".equals(getTokenType(token));
+    }
+
+    /**
+     * Refresh Token인지 확인한다.
+     */
+    public boolean isRefreshToken(String token) {
+        return "refresh".equals(getTokenType(token));
+    }
 }

@@ -3,6 +3,7 @@ package com.bidsignal.api.user.service;
 import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.global.security.jwt.JwtProvider;
+import com.bidsignal.api.global.security.jwt.RefreshTokenService;
 import com.bidsignal.api.user.domain.User;
 import com.bidsignal.api.user.dto.request.UserLoginRequest;
 import com.bidsignal.api.user.dto.request.UserSignupRequest;
@@ -22,6 +23,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final RefreshTokenService refreshTokenService;
 
     // 회원가입
     @Transactional
@@ -58,6 +60,8 @@ public class UserService {
         String accessToken = jwtProvider.generateAccessToken(user.getId());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId());
 
+        refreshTokenService.save(user.getId(), refreshToken);
+
         return TokenResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -70,6 +74,8 @@ public class UserService {
         if (!userRepository.existsById(userId)) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
+
+        refreshTokenService.deleteByUserId(userId);
     }
 
     // 내 정보 조회
@@ -79,5 +85,29 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return UserResponse.from(user);
+    }
+
+    // Access Token 재발급
+    public TokenResponse reissue(String refreshToken) {
+
+        if (!jwtProvider.validateToken(refreshToken) || !jwtProvider.isRefreshToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        Long userId = jwtProvider.getUserIdFromToken(refreshToken);
+
+        String storedRefreshToken = refreshTokenService.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
+
+        if (!storedRefreshToken.equals(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String accessToken = jwtProvider.generateAccessToken(userId);
+
+        return TokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.bidsignal.api.user.controller;
 
 import com.bidsignal.api.global.response.ApiResponse;
+import com.bidsignal.api.user.dto.request.TokenReissueRequest;
 import com.bidsignal.api.user.dto.request.UserLoginRequest;
 import com.bidsignal.api.user.dto.request.UserSignupRequest;
 import com.bidsignal.api.user.dto.response.TokenResponse;
@@ -38,7 +39,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 로그아웃 - Refresh Token 삭제 적용 전 임시
+    // 로그아웃
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal Long userId) {
 
@@ -52,6 +53,15 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponse>> getMyInfo(@AuthenticationPrincipal Long userId) {
 
         UserResponse response = userService.getMyInfo(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Refresh Token 재발급
+    @PostMapping("/reissue")
+    public ResponseEntity<ApiResponse<TokenResponse>> reissue(@Valid @RequestBody TokenReissueRequest tokenReissueRequest) {
+
+        TokenResponse response = userService.reissue(tokenReissueRequest.getRefreshToken());
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
