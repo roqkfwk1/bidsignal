@@ -3,15 +3,19 @@ package com.bidsignal.api.notice.repository;
 import com.bidsignal.api.notice.domain.BidType;
 import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.notice.dto.request.NoticeSearchRequest;
+import com.querydsl.core.types.Order;
+import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.bidsignal.api.notice.domain.QNotice.notice;
@@ -35,6 +39,7 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                         deadlineFromGoe(request.getBidClseDateFrom()),
                         deadlineToLoe(request.getBidClseDateTo())
                 )
+                .orderBy(toOrderSpecifiers(pageable.getSort()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -54,6 +59,35 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                 .fetchOne();
 
         return new PageImpl<>(content, pageable, total != null ? total : 0);
+    }
+
+    /**
+     * 요청받은 정렬 옵션을 QueryDSL 정렬 조건으로 변환하고, 없으면 공고일 최신순으로 정렬한다.
+     */
+    private OrderSpecifier<?>[] toOrderSpecifiers(Sort sort) {
+        List<OrderSpecifier<?>> orders = new ArrayList<>();
+
+        for (Sort.Order order : sort) {
+            Order direction = order.isAscending() ? Order.ASC : Order.DESC;
+            String property = order.getProperty();
+
+            switch (property) {
+                case "bidClseDt" -> orders.add(new OrderSpecifier<>(direction, notice.bidClseDt).nullsLast());
+                case "bidNtceDt" -> orders.add(new OrderSpecifier<>(direction, notice.bidNtceDt).nullsLast());
+                case "bdgtAmt" -> orders.add(new OrderSpecifier<>(direction, notice.bdgtAmt).nullsLast());
+                case "createdAt" -> orders.add(new OrderSpecifier<>(direction, notice.createdAt).nullsLast());
+                default -> {
+                    // 허용하지 않는 정렬 조건은 무시
+                }
+            }
+        }
+
+        if (orders.isEmpty()) {
+            orders.add(notice.bidNtceDt.desc().nullsLast());
+            orders.add(notice.id.desc());
+        }
+
+        return orders.toArray(new OrderSpecifier[0]);
     }
 
     private BooleanExpression keywordContains(String keyword) {
