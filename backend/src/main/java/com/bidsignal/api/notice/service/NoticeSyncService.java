@@ -12,7 +12,6 @@ import com.bidsignal.api.notice.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,7 +33,6 @@ public class NoticeSyncService {
     /**
      * 나라장터 입찰공고를 조회해서 DB에 저장한다.
      */
-    @Transactional
     public NoticeSyncResponse syncAllBidNotices(String beginDateTime, String endDateTime) {
 
         NoticeSyncResponse totalResult = new NoticeSyncResponse(0, 0, 0);
