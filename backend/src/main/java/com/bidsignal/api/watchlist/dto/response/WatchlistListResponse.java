@@ -3,6 +3,7 @@ package com.bidsignal.api.watchlist.dto.response;
 import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.watchlist.domain.WatchlistItem;
 import com.bidsignal.api.watchlist.domain.WatchlistStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -24,6 +25,7 @@ public class WatchlistListResponse {
     private LocalDateTime bidClseDt;
     private WatchlistStatus status;
     private String memo;
+    @JsonProperty("dDay")
     private Long dDay;
 
     public static WatchlistListResponse from(WatchlistItem watchlistItem) {
