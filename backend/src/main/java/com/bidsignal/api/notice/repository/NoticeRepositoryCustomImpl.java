@@ -37,7 +37,7 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                 .selectFrom(notice)
                 .where(
                         keywordContains(request.getKeyword()),
-                        bidTypeEq(request.getBidType()),
+                        bidTypesIn(request.getBidTypes()),
                         regionContains(request.getPrtcptLmtRgnNm()),
                         minAmountGoe(request.getMinAmt()),
                         maxAmountLoe(request.getMaxAmt()),
@@ -55,7 +55,7 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                 .from(notice)
                 .where(
                         keywordContains(request.getKeyword()),
-                        bidTypeEq(request.getBidType()),
+                        bidTypesIn(request.getBidTypes()),
                         regionContains(request.getPrtcptLmtRgnNm()),
                         minAmountGoe(request.getMinAmt()),
                         maxAmountLoe(request.getMaxAmt()),
@@ -128,12 +128,12 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
         return notice.bidNtceNm.contains(keyword);
     }
 
-    private BooleanExpression bidTypeEq(BidType bidType) {
-        if (bidType == null) {
+    private BooleanExpression bidTypesIn(List<BidType> bidTypes) {
+        if (bidTypes == null || bidTypes.isEmpty()) {
             return null;
         }
 
-        return notice.bidType.eq(bidType);
+        return notice.bidType.in(bidTypes);
     }
 
     private BooleanExpression regionContains(String prtcptLmtRgnNm) {
