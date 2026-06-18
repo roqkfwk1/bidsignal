@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,11 +29,17 @@ public class DashboardService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+
+        LocalDateTime urgentEnd = todayStart.plusDays(4).minusNanos(1); // 오늘 ~ D-3
+        LocalDateTime weeklyStart = todayStart.plusDays(4);             // D-4 시작
+        LocalDateTime weeklyEnd = todayStart.plusDays(8).minusNanos(1); // D-7 끝
+
         List<WatchlistStatus> activeStatuses = List.of(WatchlistStatus.REVIEWING, WatchlistStatus.PREPARING);
-        long urgentCount = watchlistItemRepository.countDeadlineBetweenAndStatusIn(userId, now, now.plusDays(3), activeStatuses);
+
+        long urgentCount = watchlistItemRepository.countDeadlineBetweenAndStatusIn(userId, todayStart, urgentEnd, activeStatuses);
         long preparingCount = watchlistItemRepository.countByUserIdAndStatus(userId, WatchlistStatus.PREPARING);
-        long weeklyCount = watchlistItemRepository.countDeadlineBetweenAndStatusIn(userId, now, now.plusDays(7), activeStatuses);
+        long weeklyCount = watchlistItemRepository.countDeadlineBetweenAndStatusIn(userId, weeklyStart, weeklyEnd, activeStatuses);
 
         return DashboardSummaryResponse.builder()
                 .urgentCount(urgentCount)
