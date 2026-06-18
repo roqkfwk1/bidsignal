@@ -16,60 +16,107 @@
 
 ---
 
-## 2. MVP 단계 정의
+## 2. 사업 방향 및 시장 포지셔닝
 
-> 각 기능/화면에 MVP 단계가 표기되어 있습니다.
-> **현재 구현 대상: 1차 MVP**
-> 2차, 3차 이후 기능은 UI는 존재하지만 비활성화(disabled) 처리합니다.
+### 시장 현황
 
-| 단계 | 핵심 기능 |
-|------|-----------|
-| **1차 MVP** | 나라장터 공고 검색 + 관심 공고 저장 + 마감 대시보드 |
-| **2차 MVP** | 제출 서류 체크리스트 + 진행률 관리 |
-| **3차 MVP** | 조건 기반 자동 수집 + 이메일 알림 |
-| **4차 MVP** | 팀 공유 + 유료화 |
-| **5차 MVP** | AI 공고 분석 + 플랫폼화 |
+- 나라장터 연간 조달 규모: 약 170조원
+- 등록 공급업체: 200만개 이상 (소규모 기업 수십만 곳이 실제 입찰 참여)
+- 기존 경쟁자(입찰나라, G-입찰 등): UI/UX 낙후, 모바일 경험 부재, 단순 알림에서 끝남
+
+### BidSignal의 차별점
+
+기존 서비스가 "알림을 주는 서비스"에 머무는 반면,
+BidSignal은 **"입찰 업무 자체를 관리해주는 SaaS"** 로 포지셔닝합니다.
+
+- 1~3차: 핵심 업무 흐름(검색 → 저장 → 알림 → 서류관리) 완성
+- 4차: AI 공고 추천으로 기존 경쟁자와 완전히 다른 가치 제공
+  ("2,000개 공고 중 우리 회사가 딸 수 있는 공고를 자동으로 추천")
+- 5차: 팀 공유 + 구독 유료화 → SaaS 수익화
+
+### 수익화 목표
+
+- 개인/소규모 기업: 월 1~3만원 구독
+- 중견기업 팀 플랜: 월 10~30만원
+- 구독자 1만명 → 월 2억원 ARR → 투자 유치 가능 규모
 
 ---
 
-## 3. 모노레포 구조
+## 3. MVP 단계 정의
+
+> **현재 상태: 1차 MVP 완료 ✅**
+> 2차 MVP 구현 시작 예정
+
+| 단계 | 핵심 기능 | 사업적 의미 |
+|------|-----------|------------|
+| **1차 MVP** ✅ | 나라장터 공고 검색 + 관심 공고 저장 + 마감 대시보드 | 사용자 유입 |
+| **2차 MVP** | 마감 임박 이메일 알림 → 이후 카카오 알림톡 추가 | 리텐션 확보 |
+| **3차 MVP** | 입찰 서류 체크리스트 + 진행률 관리 | 이탈 방지, 도구화 |
+| **4차 MVP** | AI 공고 추천 (실적/역량 기반) | 핵심 차별점 |
+| **5차 MVP** | 팀 공유 + 유료화 | 수익화 |
+
+### 알림 채널 전략 (2차 MVP)
+
+한국 사용자 특성상 이메일 오픈율(10~20%)이 카카오 알림톡(70~80%)보다 현저히 낮음.
+단계적으로 접근합니다.
+
+1. **이메일 알림 먼저 구현** (2차 MVP): 사업자 등록 없이 즉시 구현 가능, 알림 로직 검증
+2. **카카오 알림톡 추가** (2차 MVP 이후 별도 업데이트): 사업자 등록 + 카카오 채널 개설 후 적용
+3. **SMS**: 카카오 알림톡의 폴백 용도로만 사용
+
+> 알림 로직(스케줄러, 발송 이력)은 채널과 분리해서 설계할 것.
+> 이메일 → 카카오 전환 시 핵심 로직을 재작성하지 않아도 되도록.
+
+---
+
+## 4. 모노레포 구조
 
 ```
 BidSignal/
-├── frontend/          ← Next.js (이 디렉토리가 Claude Code 작업 영역)
+├── frontend/          ← Next.js (Claude Code 작업 영역)
 │   ├── app/
 │   ├── components/
 │   ├── lib/
-│   ├── data/
 │   ├── types/
 │   └── public/
-├── backend/           ← Spring Boot (별도 작업, 여기는 건드리지 않음)
-├── docs/              ← 기획서, UI 디자인 문서
-├── CLAUDE.md          ← 이 파일
+├── backend/           ← Spring Boot (Claude Code에서 절대 수정 금지)
+├── docs/
+├── CLAUDE.md
 └── docker-compose.yml
 ```
 
 ---
 
-## 4. 기술 스택 (frontend/)
+## 5. 기술 스택
+
+### Frontend (frontend/)
 
 | 항목 | 기술 |
 |------|------|
-| 프레임워크 | Next.js 14 (App Router) |
+| 프레임워크 | Next.js (App Router) |
 | 언어 | TypeScript |
 | 스타일링 | Tailwind CSS |
 | UI 컴포넌트 | shadcn/ui |
 | 패키지 매니저 | npm |
-| 폰트 | Noto Sans KR (Google Fonts) |
+
+### Backend (backend/) — 참조용, Claude Code에서 수정 금지
+
+| 항목 | 기술 |
+|------|------|
+| 언어/런타임 | Java 21 |
+| 프레임워크 | Spring Boot 3.x |
+| DB | PostgreSQL |
+| 캐시 | Redis |
+| 쿼리 | QueryDSL |
+| 인증 | JWT (Access Token + Refresh Token) |
 
 ---
 
-## 5. 디자인 시스템 (절대 임의로 변경하지 말 것)
+## 6. 디자인 시스템 (절대 임의로 변경하지 말 것)
 
 ### 컬러 토큰
 
 ```typescript
-// tailwind.config.ts 또는 globals.css에 정의
 const colors = {
   primary: '#1560E7',    // Primary Blue — CTA, 선택 상태
   deadline: '#E53935',   // Red — 마감 임박
@@ -83,24 +130,11 @@ const colors = {
 
 - 폰트: `Noto Sans KR`
 - 본문: **16px 이상** (절대 미만 금지)
-- 주요 숫자 (건수, D-day 등): **28px 이상**
+- 주요 숫자(건수, D-day 등): **28px 이상**
 - 버튼/탭: **16px 이상**
 - 테이블 행 높이: **56px 이상**
 
-### 공고 상태 라벨 (NoticeStatusBadge) — 색상+텍스트+아이콘 항상 함께
-
-> 나라장터 공고 자체의 상태를 나타냅니다.
-
-| 상태 | 배경색 | 텍스트색 | 아이콘 | 라벨 |
-|------|--------|----------|--------|------|
-| urgent | #FEE2E2 | #991B1B | ⏰ | 마감 임박 |
-| corrected | #FEF3C7 | #92400E | ✎ | 정정됨 |
-| new | #D1FAE5 | #065F46 | ★ | 신규 |
-| review | #EFF6FF | #1E40AF | 🔍 | 검토 필요 |
-
 ### 관심 공고 상태 라벨 (WatchlistStatusBadge)
-
-> 사용자가 저장한 관심 공고의 진행 상태를 나타냅니다.
 
 | 상태 | 배경색 | 텍스트색 | 라벨 | 카드 처리 |
 |------|--------|----------|------|-----------|
@@ -113,372 +147,308 @@ const colors = {
 
 - 색상만으로 상태를 구분하지 않음 (반드시 텍스트 라벨 동반)
 - CTA는 파란색(Primary) / 외곽선 버튼으로 위계 구분
-- 테이블은 엑셀 친숙성을 위해 유지 (카드형으로 바꾸지 말 것)
-- 도움말 / 고객센터를 사이드바 하단에 항상 노출
-- 메뉴명은 한국어: 홈 / 공고 찾기 / 관심 공고 / 알림 내역 / 제출 체크리스트 / 설정
-- **2차 이후 기능은 메뉴에 노출하되 비활성화(disabled) 처리. 절대 제거하지 말 것**
+- 공고 찾기: 리스트형 유지 (카드형으로 바꾸지 말 것)
+- 관심 공고: 카드형 유지 (1차 MVP 기준, 2차에서 리스트 전환 고려 가능)
+- 도움말은 사이드바 하단에 유지
 
 ---
 
-## 6. 페이지 구조 (App Router)
+## 7. 현재 사이드바 메뉴 구조 (1차 MVP 확정)
+
+```
+홈
+공고 찾기
+관심 공고
+관심 조건 설정
+마이페이지
+도움말
+```
+
+> **중요**: 알림, 체크리스트 메뉴는 1차 MVP에서 완전히 제거됨.
+> disabled/준비중 배지로 노출하지 않음.
+> 도움말 페이지의 "서비스 안내" 박스에만 로드맵으로 안내.
+> 2차 MVP 구현 시점에 "알림 내역" 메뉴를 추가할 것.
+> 3차 MVP 구현 시점에 "체크리스트" 메뉴를 추가할 것.
+
+---
+
+## 8. 페이지 구조 (App Router)
 
 ```
 frontend/app/
-├── layout.tsx                    ← 최상위 레이아웃 (폰트 로드)
+├── layout.tsx
 ├── (auth)/
 │   ├── login/page.tsx
-│   ├── register/page.tsx
-│   └── onboarding/page.tsx       ← 최초 로그인 후 1회 표시되는 서비스 소개 슬라이드
+│   └── register/page.tsx
 └── (dashboard)/
     ├── layout.tsx                ← AppShell: Sidebar + Header
-    ├── page.tsx                  ← 홈 대시보드 ("오늘 할 일")
+    ├── page.tsx                  ← 홈 대시보드
     ├── notices/
     │   ├── page.tsx              ← 공고 찾기
     │   └── [id]/page.tsx         ← 공고 상세
     ├── watchlist/page.tsx        ← 관심 공고
-    ├── alerts/page.tsx           ← 알림 내역 [3차 활성화 예정 — 현재 비활성]
-    ├── checklist/page.tsx        ← 제출 체크리스트 [2차 활성화 예정 — 현재 비활성]
-    └── settings/page.tsx         ← 설정
+    ├── settings/
+    │   └── conditions/page.tsx   ← 관심 조건 설정
+    ├── mypage/page.tsx           ← 마이페이지
+    └── help/page.tsx             ← 도움말
+```
+
+### 인증 정책
+
+- `GET /api/notices/**`: 비로그인 사용자도 접근 가능 (백엔드 `permitAll` 설정됨)
+- 공개 페이지 (비로그인 접근 가능): 홈, 공고 찾기
+- 보호 페이지 (로그인 필요): 관심 공고, 관심 조건 설정, 마이페이지
+- 프론트엔드 라우팅 가드에서 공개/보호 페이지를 분리해서 처리
+- 비로그인 상태에서 ★(관심공고 저장) 등 인증 필요 동작 시도 시 → 로그인 유도
+
+---
+
+## 9. 백엔드 API 연동 현황 (1차 MVP 완료)
+
+```
+[공고]
+GET  /api/notices/search               공고 검색 (나라장터 API 연동)
+GET  /api/notices/{id}                 공고 상세
+
+[관심 공고]
+GET    /api/watchlist                  관심 공고 목록
+POST   /api/watchlist/{noticeId}       관심 공고 저장
+DELETE /api/watchlist/{noticeId}       관심 공고 삭제
+PATCH  /api/watchlist/{noticeId}/status  상태 변경
+PATCH  /api/watchlist/{noticeId}/memo    메모 저장
+
+[대시보드]
+GET  /api/dashboard/summary            요약 (urgentCount, weeklyCount, preparingCount)
+
+[인증]
+POST /api/users/signup
+POST /api/users/login
+POST /api/users/reissue
+
+[2차 MVP 예정]
+GET  /api/alerts                       알림 내역
+POST /api/settings/alerts              알림 설정 저장
+
+[3차 MVP 예정]
+GET    /api/checklist/{noticeId}
+POST   /api/checklist/{noticeId}/items
+PATCH  /api/checklist/{noticeId}/items/{itemId}
 ```
 
 ---
 
-## 7. 컴포넌트 구조
+## 10. 주요 API 스펙 결정사항
 
-```
-frontend/components/
-├── layout/
-│   ├── Sidebar.tsx               ← 한국어 메뉴, 큰 클릭 영역, 현재 위치 강조
-│   │                                비활성 메뉴는 disabled + "준비 중" 뱃지 표시
-│   └── Header.tsx                ← 통합 검색, 알림 벨, 사용자 정보
-├── common/
-│   ├── DDayBadge.tsx             ← D-day 표시 (D-3 이하 빨간색, D-7 이하 주황색)
-│   ├── EmptyState.tsx            ← 빈 상태 안내 컴포넌트
-│   ├── ApiErrorState.tsx         ← API 오류 안내 + 재시도 버튼
-│   └── SaveToast.tsx             ← 관심 공고 저장 완료 토스트
-├── notices/
-│   ├── NoticeTable.tsx           ← 엑셀 친화적 표, 높은 행 간격, 상태 라벨
-│   ├── NoticeStatusBadge.tsx     ← 마감임박/정정됨/신규/검토필요 배지 (공고 자체 상태)
-│   └── NoticeFilterBar.tsx       ← 업종/지역/발주기관/금액/마감일 필터
-├── watchlist/
-│   ├── WatchlistStatusBadge.tsx  ← 검토중/준비중/제출완료/포기 배지
-│   ├── WatchlistStatusDropdown.tsx ← 상태 변경 드롭다운
-│   └── MemoInput.tsx             ← 공고별 메모 입력 (최대 200자)
-├── dashboard/
-│   └── TaskSummaryCard.tsx       ← 마감임박/준비중/이번주마감 숫자 카드
-└── checklist/
-    └── ChecklistPanel.tsx        ← [2차 MVP] 공고별 진행률, 완료/대기 상태 관리
+### 공고 검색 파라미터 (NoticeSearchRequest)
+
+- `bidTypes`: `List<BidType>` — 다중 선택. 쿼리스트링: `?bidTypes=공사&bidTypes=물품`
+- `bidTypes`가 null이거나 빈 리스트면 "전체 조회"로 처리 (IN 절 조건 미적용)
+- `includeExpired`: 마감된 공고 포함 여부 (기본값: false = 마감 공고 제외)
+- `minAmt`, `maxAmt`: 금액 범위 필터
+- `bidClseDateFrom`, `bidClseDateTo`: 마감일 범위 필터
+
+### 대시보드 카운트 경계 조건 (중요)
+
+반드시 날짜 경계(자정 기준)로 계산할 것.
+시각(`LocalDateTime.now()`) 기준으로 비교하면 D-Day 공고가 누락되는 버그 발생.
+
+```java
+// 올바른 구현
+LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+LocalDateTime urgentEnd = todayStart.plusDays(4).minusNanos(1);  // D-Day~D-3
+LocalDateTime weeklyStart = todayStart.plusDays(4);               // D-4 시작
+LocalDateTime weeklyEnd = todayStart.plusDays(8).minusNanos(1);   // D-7 끝
 ```
 
----
+- `urgentCount`: D-Day~D-3 (오늘 자정 ~ D+3 끝)
+- `weeklyCount`: D-4~D-7 (urgentCount와 겹치지 않음)
 
-## 8. 데이터 레이어
+### 금액 필터 프리셋 (데이터 분포 기반 확정)
 
-### Mock 데이터 (백엔드 연동 전)
+| 라벨 | minAmt | maxAmt |
+|------|--------|--------|
+| 전체 | - | - |
+| 5천만 미만 | - | 49,999,999 |
+| 5천만~1억 | 50,000,000 | 99,999,999 |
+| 1억~5억 | 100,000,000 | 499,999,999 |
+| 5억 이상 | 500,000,000 | - |
 
-```
-frontend/data/
-├── mockNotices.ts               ← 나라장터 공고 목업 데이터
-├── mockWatchlist.ts             ← 관심 공고(저장된 공고) 목업 데이터
-├── mockDashboard.ts             ← 대시보드 요약 목업 데이터
-└── mockChecklist.ts             ← [2차] 체크리스트 목업 데이터
+> 실제 DB 데이터 분포를 쿼리해서 결정한 구간. 임의로 변경 금지.
 
-frontend/types/
-├── notice.ts                    ← 공고 + 관심 공고 관련 타입 정의
-├── checklist.ts                 ← [2차] 체크리스트 타입
-└── alert.ts                     ← [3차] 알림 타입
-```
+### 백엔드 주요 설계 결정사항
 
-### API 클라이언트 (백엔드 연동 시)
-
-```
-frontend/lib/
-├── api.ts                       ← fetch 기반 API 클라이언트
-│                                   baseURL: process.env.NEXT_PUBLIC_API_URL
-└── api/
-    ├── notices.ts               ← 공고 검색/상세 API 함수
-    ├── watchlist.ts             ← 관심 공고 저장/조회/상태변경/메모 API 함수
-    ├── alerts.ts                ← [3차] 알림 API 함수
-    └── checklist.ts             ← [2차] 체크리스트 API 함수
-```
-
-**구현 원칙**: 각 페이지는 `data/mock*.ts`를 import해서 사용하다가,
-백엔드 연동 시 `lib/api/*.ts` 함수로 교체만 하면 되도록 인터페이스를 동일하게 유지.
+- **인덱스**: `notices` 테이블의 `bid_type`, `bid_clse_dt`, `bid_ntce_dt` 컬럼에 인덱스 추가됨
+- **마감 공고 정렬**: `includeExpired=true`일 때 CaseBuilder로 만료 플래그를 1차 정렬 기준으로 추가
+- **now 단일화**: `search()` 메서드에서 `LocalDateTime now`를 한 번만 생성해서 WHERE/ORDER BY에 동일하게 사용
 
 ---
 
-## 9. 핵심 화면별 요구사항
+## 11. 홈 대시보드 구조 (1차 MVP 확정)
 
-### 9-1. 온보딩 슬라이드 (`app/(auth)/onboarding/page.tsx`) [1차]
+### 오늘 할 일 (파란색 카드, X 버튼 없음 — 항상 표시)
 
-- 최초 로그인 후 1회만 표시 (로컬 스토리지로 관리)
-- 슬라이드 3장:
-  1. "나라장터 공고를 한 곳에서" — 키워드/지역/업종으로 공고 검색
-  2. "관심 공고를 저장하고 관리하세요" — 마감일 D-day 확인, 준비 상태 기록
-  3. "마감을 절대 놓치지 마세요" — 마감 임박 공고 대시보드 확인
-- 마지막 슬라이드에 "시작하기" 버튼 (홈으로 이동)
-- "건너뛰기" 버튼 (모든 슬라이드에서 표시)
+| 항목 | 값 출처 | 라벨 |
+|------|---------|------|
+| 마감 임박 공고 확인 | `urgentCount` | D-3 이내 |
+| 곧 마감될 공고 | `weeklyCount` | D-4~D-7 |
 
----
+> 두 항목은 서로 겹치지 않는 순수 시간 축 분류.
 
-### 9-2. 홈 대시보드 (`app/(dashboard)/page.tsx`) [1차]
+### 나의 현황 (우측 박스)
 
-**상단 요약 카드 3개** (1차 활성):
+| 항목 | 값 출처 |
+|------|---------|
+| 관심 공고 | watchlist 응답 건수 |
+| 준비중 공고 | `preparingCount` |
 
-| 카드 | 색상 | 클릭 시 이동 |
-|------|------|-------------|
-| 마감 임박 공고 N건 (D-3 이내) | Red #E53935 | 관심 공고 → 마감임박 탭 |
-| 준비 중인 공고 N건 | Blue #1560E7 | 관심 공고 → 준비중 탭 |
-| 이번 주 마감 공고 N건 (D-7 이내) | Orange #F58025 | 관심 공고 → 마감임박 탭 |
+> 알림 관련 항목 없음. 2차 MVP에서 "읽지 않은 알림" 추가 예정.
 
-> **[2차 활성 예정]** 확인할 체크리스트 N건 카드 — 현재 비활성화(disabled, 흐리게)
+### 최근 저장한 공고
 
-**오늘 바로 확인하세요 (관심 공고 테이블)**:
-- 마감 임박 관심 공고 최대 5건
-- 컬럼: 공고명 / 기관명 / 마감일+D-day / 상태(WatchlistStatus) / 바로가기
-- 행 높이 56px 이상
-- 클릭 시 공고 상세로 이동
-
-**최근 저장한 공고 섹션**:
-- 가장 최근에 저장한 공고 3건 미리보기 (제목, 기관, D-day)
-- "더보기" 클릭 시 관심 공고 페이지로 이동
-- 저장한 공고 없으면 EmptyState: "아직 저장한 공고가 없어요 / 공고를 찾아서 저장해보세요 / [공고 찾기]"
-
-> **[3차 활성 예정]** 맞춤 추천 공고 섹션
-
----
-
-### 9-3. 공고 찾기 (`app/(dashboard)/notices/page.tsx`) [1차]
-
-**검색 영역**:
-- 검색 입력창 (공고명/기관명/키워드) + 검색하기 버튼
-- 필터 드롭다운: 업종 / 지역 / 발주기관 / 금액 / 마감일
-- Enter 키 입력 시 검색 동작
-
-**검색 결과 테이블**:
-- 컬럼: 공고명(공고번호 서브텍스트) / 기관명 / 마감일+DDayBadge / 금액 / 상태(NoticeStatusBadge) / 관심공고 저장(★)
-- 정렬 드롭다운 (마감일순 기본)
-- 페이지네이션
-
-**★ 저장 버튼 동작**:
-- 미저장: ★ outline → 클릭 시 저장 → ★ filled(노란색) + SaveToast 표시
-- 저장됨: ★ filled → 클릭 시 저장 취소 → ★ outline
-
-**상태 처리**:
-- 로딩: Skeleton UI
-- 결과 없음: EmptyState "검색 결과가 없어요 / 다른 키워드나 조건으로 검색해보세요"
-- API 오류: ApiErrorState + 재시도 버튼
-
----
-
-### 9-4. 공고 상세 (`app/(dashboard)/notices/[id]/page.tsx`) [1차]
-
-**상단 공고 헤더**:
-- 공고명 + NoticeStatusBadge
-- 메타정보: 발주기관, 공고번호, 계약유형, 지역, 예정금액
-- CTA 버튼:
-  - **[1차]** 관심 공고 저장 / 공고 원문 보기
-  - **[3차 비활성]** 알림 받기 버튼 — disabled + "준비 중" 표시
-
-**핵심 지표 카드**:
-- 마감일까지: D-N + 마감 날짜 (DDayBadge)
-- 예정 금액: 억원 단위
-- 수정 여부: 수정 없음 / 수정 있음
-
-**관심 공고 액션 영역** (저장된 공고일 때만 표시):
-- 상태 변경: WatchlistStatusDropdown
-- 메모 입력: textarea (최대 200자) + 저장 버튼
-
-**미저장 공고일 때**:
-- "+ 관심 공고에 추가" 버튼 (primary)
-
-**탭**: 상세내용 / 자격요건 / 첨부파일
-
----
-
-### 9-5. 관심 공고 (`app/(dashboard)/watchlist/page.tsx`) [1차]
-
-**탭**: 전체 / 마감임박(D-7 이내) / 준비중 / 제출완료
-
-**공고 카드 구성**:
-- 공고명 + NoticeStatusBadge
-- 기관명 + DDayBadge
-- WatchlistStatusBadge + WatchlistStatusDropdown
-- 메모 미리보기 (없으면 "메모 추가" 연하게)
-- 카드 우측 상단: "..." 메뉴 → 관심 공고 삭제
-
-**정렬**: 마감일 임박순(기본) / 최근 저장순 / 상태순
-
-**DROPPED 상태**: opacity-50, 목록 최하단
-
-**빈 상태**: EmptyState "저장한 공고가 없어요 / [공고 찾기]"
-
----
-
-### 9-6. 알림 내역 (`app/(dashboard)/alerts/page.tsx`) [3차 활성 예정]
-
-- 사이드바 메뉴: disabled, 흐리게, "준비 중" 뱃지
-- 페이지: EmptyState "알림 서비스를 준비 중이에요"
-
----
-
-### 9-7. 제출 체크리스트 (`app/(dashboard)/checklist/page.tsx`) [2차 활성 예정]
-
-- 사이드바 메뉴: disabled, 흐리게, "준비 중" 뱃지
-- 페이지: EmptyState "체크리스트 기능을 준비 중이에요"
-
----
-
-### 9-8. 설정 (`app/(dashboard)/settings/page.tsx`) [1차]
-
-**1차 활성**: 가입 정보 / 비밀번호 변경 / 관심 조건 설정 / 로그아웃
-
-**비활성** (disabled, "준비 중" 뱃지): 알림 설정 [3차] / 간편 모드 설정
-
-**관심 조건 설정**:
-- 지역, 공고 유형, 업종/분류, 공고 금액, 키워드 설정
-- 설명: "설정한 조건은 공고 찾기에서 기본 필터로 적용돼요."
-- 알림 토글: disabled + "3차 업데이트 예정"
-
----
-
-## 10. Mock 데이터 구조
-
-```typescript
-// types/notice.ts
-
-export type NoticeStatus = 'urgent' | 'corrected' | 'new' | 'review';
-
-export type WatchlistStatus = 'REVIEWING' | 'PREPARING' | 'SUBMITTED' | 'DROPPED';
-
-export const WATCHLIST_STATUS_LABEL: Record<WatchlistStatus, string> = {
-  REVIEWING: '검토중',
-  PREPARING: '준비중',
-  SUBMITTED: '제출완료',
-  DROPPED: '포기',
-};
-
-export interface Notice {
-  id: number;
-  name: string;
-  agency: string;
-  bidNo: string;
-  deadline: string;       // YYYY-MM-DD
-  deadlineTime: string;   // "오늘 18:00"
-  dDay: number;
-  status: NoticeStatus;
-  amount: number;         // 억원
-  contractType: string;
-  region: string;
-  isModified: boolean;
-}
-
-export interface SavedNotice extends Notice {
-  watchlistStatus: WatchlistStatus;
-  memo: string;
-  savedAt: string;        // ISO 형식
-}
-```
-
----
-
-## 11. 환경 변수
-
-```bash
-# frontend/.env.local
-NEXT_PUBLIC_API_URL=http://localhost:8080/api
-
-# frontend/.env.local.example (커밋용)
-NEXT_PUBLIC_API_URL=http://localhost:8080/api
-```
+- watchlist 최근 3건 표시
+- D-Day가 지난 공고는 "마감"으로 표시
 
 ---
 
 ## 12. 현재 구현 상태
 
 ```
-[완료]
-✅ 공통 레이아웃 (Sidebar, Header, AppShell)
-✅ 타입 정의 + Mock 데이터
-✅ 공통 컴포넌트 (DDayBadge, StatusBadge, EmptyState 등)
-✅ 홈 대시보드
-✅ 공고 찾기
+[1차 MVP 완료 ✅]
+✅ 프론트-백엔드 연동 완료
+✅ JWT 인증 (로그인/회원가입/토큰 재발급)
+✅ 나라장터 공고 검색 (멀티 필터, 다중 공고유형, 페이지네이션)
 ✅ 공고 상세
-✅ 관심 공고
-✅ 설정
-✅ 알림내역/체크리스트 비활성 처리
-✅ 온보딩 슬라이드
-✅ API 레이어 준비 (lib/api/*.ts — mock 데이터 반환)
+✅ 관심 공고 저장/삭제/상태변경/메모
+✅ 홈 대시보드 (오늘 할 일, 나의 현황, 최근 저장 공고)
+✅ 관심 공고 탭/필터
+✅ 관심 조건 설정 (지역/공고유형/키워드)
+✅ 마이페이지
+✅ 도움말
+✅ 비로그인 사용자 공고 조회 허용
+✅ 비활성 기능(알림/체크리스트) 사이드바 완전 제거, 도움말에 로드맵 안내
 
-[진행 예정]
-⬜ 백엔드 API 구현 (Spring Boot)
-⬜ 프론트-백엔드 연동 (lib/api/*.ts → 실제 API 호출로 교체)
-⬜ 2차 MVP: 체크리스트 기능 활성화
-⬜ 3차 MVP: 알림 기능 활성화
+[2차 MVP 예정 — 마감 임박 알림]
+⬜ 이메일 알림 (스케줄러: D-3, D-1 발송)
+⬜ 알림 설정 UI (마이페이지 내)
+⬜ 알림 내역 페이지 (/alerts)
+⬜ 사이드바에 "알림 내역" 메뉴 추가
+⬜ 나의 현황에 "읽지 않은 알림" 카운트 추가
+⬜ (이후) 카카오 알림톡 채널 추가
+
+[3차 MVP 예정 — 서류 체크리스트]
+⬜ 공고별 체크리스트 + 진행률 관리
+⬜ 체크리스트 페이지 (/checklist)
+⬜ 사이드바에 "체크리스트" 메뉴 추가
+
+[4차 MVP 예정 — AI 공고 추천]
+⬜ 실적/역량 기반 수주 가능성 높은 공고 자동 추천
+⬜ 기존 경쟁자와의 핵심 차별점
+
+[5차 MVP 예정 — 팀 공유 + 유료화]
+⬜ 팀 공유 기능
+⬜ 구독 요금제 (개인/팀 플랜)
 ```
 
 ---
 
-## 13. shadcn/ui 설치 컴포넌트
+## 13. 2차 MVP 구현 가이드 (알림 기능)
 
-```bash
-npx shadcn@latest add button card badge table dialog input select \
-  checkbox tabs toast dropdown-menu progress separator textarea skeleton
+### 백엔드 예상 작업
+
+```
+[스케줄러]
+- 매일 오전 9시 실행 (@Scheduled 또는 Quartz)
+- 관심 공고 중 D-3, D-1인 공고 조회 (REVIEWING, PREPARING 상태만)
+- 해당 사용자에게 이메일 발송 (JavaMailSender + 템플릿)
+- 발송 이력 저장 (중복 발송 방지)
+
+[DB 추가]
+- alert_logs 테이블 (userId, noticeId, sentAt, channel)
+- user_alert_settings 테이블 (userId, emailEnabled, kakaoEnabled, daysBeforeList)
+
+[API 추가]
+GET  /api/alerts                알림 내역 조회
+POST /api/settings/alerts       알림 설정 저장
+```
+
+### 프론트엔드 예상 작업
+
+```
+1. 사이드바에 "알림 내역" 메뉴 추가
+2. /alerts 페이지 구현 (알림 목록, 읽음/안읽음 처리)
+3. 마이페이지에 "알림 설정" 메뉴 추가
+4. 관심 조건 설정에 "마감 임박 알림 받기" 토글 추가
+5. 나의 현황에 "읽지 않은 알림" 카운트 추가
+6. 상단 벨 아이콘 클릭 시 알림 내역으로 이동
+```
+
+### 알림 로직 설계 원칙
+
+> 채널(이메일/카카오)과 발송 로직을 분리해서 설계할 것.
+> 나중에 카카오 알림톡 추가 시 핵심 로직(대상 조회, 이력 저장)을 재작성하지 않아도 되도록.
+
+```java
+// 권장 구조
+NotificationService        // 채널 무관한 핵심 로직 (대상 조회, 이력 관리)
+├── EmailNotificationSender   // 이메일 발송
+└── KakaoNotificationSender   // 카카오 알림톡 발송 (2차 이후 추가)
 ```
 
 ---
 
-## 14. 절대 하지 말아야 할 것
+## 14. 도움말 페이지 서비스 안내 문구 (확정)
+
+```
+현재 1차 MVP 서비스 운영 중입니다.
+마감 임박 알림, 입찰 서류 체크리스트 기능은 2차 업데이트에서 순차적으로 제공될 예정입니다.
+개선 의견은 이메일로 보내주시면 적극 반영합니다.
+```
+
+> 이 문구를 임의로 변경하지 말 것.
+> 2차 MVP 완료 후 "알림 기능 출시" 문구로 업데이트할 것.
+
+---
+
+## 15. 절대 하지 말아야 할 것
 
 **코드 품질**:
 - `any` 타입 사용 금지
 - 메뉴/버튼에 영어 사용 금지 (한국어로)
 - 폰트 크기 16px 미만 사용 금지
 - 상태를 색상만으로 구분 금지 (텍스트 라벨 항상 동반)
-- 테이블을 카드 그리드로 임의 변경 금지
-- `lib/api.ts` 경로 변경 금지 (백엔드 연동 포인트)
-- 목데이터를 페이지 컴포넌트 내부에 인라인으로 작성 금지
+- 공고 찾기 테이블을 카드 그리드로 임의 변경 금지
+- 백엔드 코드 수정 금지 (Claude Code 작업 범위는 프론트엔드만)
 
 **MVP 범위 준수**:
-- 2차 이후 기능을 1차에서 실제 구현 금지 (UI만 비활성화로 존재)
-- 알림 발송(이메일/카카오) 기능 1차에서 구현 금지
-- 조건 기반 자동 수집 스케줄러 1차에서 구현 금지
-- AI/LLM 관련 기능 구현 금지
-- 결제 기능 구현 금지
-- 팀 공유 기능 구현 금지
-- 비활성 기능을 완전히 제거 금지 (숨김/disabled 처리만 할 것)
+- 현재 단계보다 앞선 MVP 기능 구현 금지
+- 카카오 알림톡을 2차 MVP 이메일 구현 전에 먼저 구현 금지
+- AI 추천 기능을 4차 MVP 전에 구현 금지
+- 결제/유료화 기능을 5차 MVP 전에 구현 금지
+
+**1차 MVP 확정 사항 변경 금지**:
+- 사이드바 메뉴에 알림/체크리스트 임의 추가 금지 (각 MVP 시작 시 추가할 것)
+- 마이페이지에 알림 설정, 간편 모드 설정 추가 금지 (2차 시작 시 추가)
+- 관심 조건 설정에 알림 토글 추가 금지 (2차 시작 시 추가)
+- 도움말 서비스 안내 문구 임의 변경 금지
+- 금액 필터 구간 임의 변경 금지
+- "오늘 할 일" 위젯에 X 버튼 추가 금지 (항상 표시)
+- "오늘 할 일" 위젯 라벨: "마감 임박 공고 확인 (D-3 이내)", "곧 마감될 공고 (D-4~D-7)" 고정
 
 ---
 
-## 15. 백엔드 연동 계획
+## 16. 커밋 컨벤션
 
-```
-[1차 MVP]
-GET    /api/notices                    공고 검색 (나라장터 Open API 프록시)
-GET    /api/notices/{id}               공고 상세
-GET    /api/watchlist                  관심 공고 목록
-POST   /api/watchlist/{bidNo}          관심 공고 저장
-DELETE /api/watchlist/{bidNo}          관심 공고 삭제
-PATCH  /api/watchlist/{bidNo}/status   관심 공고 상태 변경
-PATCH  /api/watchlist/{bidNo}/memo     관심 공고 메모 저장
-GET    /api/dashboard/summary          대시보드 요약
-
-[2차 MVP 예정]
-GET    /api/checklist/{bidNo}
-POST   /api/checklist/{bidNo}/items
-PATCH  /api/checklist/{bidNo}/items/{itemId}
-
-[3차 MVP 예정]
-GET    /api/alerts
-POST   /api/settings/conditions
-```
+- conventional commit 한글 (feat/fix/refactor/chore/docs/perf)
+- 간결하게 한 줄로
+- 프론트 커밋: Claude Code 작업 후 본인이 직접 모아서 커밋 (Claude Code에서 커밋 금지)
+- 백엔드 커밋: 본인이 직접 작성하고 커밋
 
 ---
 
-## 16. 프로젝트 컨텍스트
+## 17. 프로젝트 컨텍스트
 
 - 작성자: 이성준 (Backend Developer, 경력 약 1.5년)
 - 공공 SI 나라장터 운영 경험 기반으로 기획된 도메인 프로젝트
 - 포트폴리오 + 실 운영 + 수익화 목표
-- Backend: Java 17 / Spring Boot / PostgreSQL / Redis
+- Backend: Java 21 / Spring Boot / PostgreSQL / Redis / QueryDSL / JWT
 - Frontend: Next.js / TypeScript / Tailwind CSS / shadcn/ui
