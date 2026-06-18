@@ -15,7 +15,12 @@ import java.time.LocalDateTime;
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_notices_bid_ntce_no_ord",
                 columnNames = {"bid_ntce_no", "bid_ntce_ord"}
-        )
+        ),
+        indexes = {
+                @Index(name = "idx_notices_bid_type", columnList = "bid_type"),
+                @Index(name = "idx_notices_bid_clse_dt", columnList = "bid_clse_dt"),
+                @Index(name = "idx_notices_bid_ntce_dt", columnList = "bid_ntce_dt")
+        }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
