@@ -1,30 +1,47 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   User,
-  Bell,
   Settings,
-  SlidersHorizontal,
   Lock,
   LogOut,
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn, formatPhoneNumber } from '@/lib/utils';
+import { logout, getMyInfo } from '@/lib/api/auth';
+import { getWatchlist } from '@/lib/api/watchlist';
+import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import type { UserResponse } from '@/types/notice';
 
-const DISABLED_BADGE = (
-  <span className="text-[11px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-medium leading-none">
-    준비 중
-  </span>
-);
 
 export default function MyPage() {
+  useRequireAuth();
   const router = useRouter();
+
+  const [user, setUser]                   = useState<UserResponse | null>(null);
+  const [watchlistCount, setWatchlistCount] = useState(0);
+  const [loading, setLoading]             = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const [userResult, watchlistResult] = await Promise.allSettled([
+        getMyInfo(),
+        getWatchlist(),
+      ]);
+      if (userResult.status === 'fulfilled')     setUser(userResult.value);
+      if (watchlistResult.status === 'fulfilled') setWatchlistCount(watchlistResult.value.length);
+      setLoading(false);
+    }
+    load();
+  }, []);
 
   function handleLogout() {
     if (confirm('로그아웃 하시겠습니까?')) {
-      router.push('/login');
+      logout();
     }
   }
 
@@ -43,11 +60,25 @@ export default function MyPage() {
           <div className="flex-shrink-0 flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 text-gray-400">
             <User className="size-8" />
           </div>
+
           <div className="flex-1 min-w-0">
-            <p className="text-xl font-bold text-gray-900">성준님</p>
-            <p className="text-base text-gray-500 mt-0.5">010-1234-5678</p>
-            <p className="text-base text-gray-500">sungjun@example.com</p>
+            {loading ? (
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-6 w-28" />
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-4 w-44" />
+              </div>
+            ) : (
+              <>
+                <p className="text-xl font-bold text-gray-900">{user?.nickname ?? '-'}님</p>
+                {user?.phoneNumber && (
+                  <p className="text-base text-gray-500 mt-0.5">{formatPhoneNumber(user.phoneNumber)}</p>
+                )}
+                <p className="text-base text-gray-500 mt-0.5">{user?.email ?? '-'}</p>
+              </>
+            )}
           </div>
+
           <Button
             variant="outline"
             onClick={() => alert('준비 중입니다.')}
@@ -59,7 +90,6 @@ export default function MyPage() {
 
         {/* 섹션 3: 메뉴 목록 */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100">
-          {/* 활성 메뉴 */}
           <MenuRow
             icon={<User className="size-5" />}
             label="가입 정보"
@@ -82,22 +112,6 @@ export default function MyPage() {
             right={<ChevronRight className="size-5 text-gray-400" />}
           />
 
-          {/* 비활성 메뉴 */}
-          <MenuRow
-            icon={<Bell className="size-5" />}
-            label="알림 설정"
-            right={DISABLED_BADGE}
-            disabled
-          />
-
-          <MenuRow
-            icon={<SlidersHorizontal className="size-5" />}
-            label="간편 모드 설정"
-            right={DISABLED_BADGE}
-            disabled
-          />
-
-          {/* 로그아웃 */}
           <MenuRow
             icon={<LogOut className="size-5 text-red-500" />}
             label="로그아웃"
@@ -113,21 +127,15 @@ export default function MyPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h3 className="font-semibold text-gray-900 text-base mb-3">나의 현황</h3>
           <div className="flex flex-col">
-            {[
-              { label: '관심 공고',       count: '3건', countClass: 'text-blue-600' },
-              { label: '읽지 않은 알림',  count: '2건', countClass: 'text-red-600' },
-            ].map(({ label, count, countClass }, i, arr) => (
-              <div
-                key={label}
-                className={cn(
-                  'flex justify-between items-center py-3 text-sm',
-                  i < arr.length - 1 ? 'border-b border-gray-100' : ''
-                )}
-              >
-                <span className="text-gray-600">{label}</span>
-                <span className={cn('font-bold', countClass)}>{count}</span>
-              </div>
-            ))}
+            {/* 관심 공고 — 실제 데이터 */}
+            <div className="flex justify-between items-center py-3 text-sm">
+              <span className="text-gray-600">관심 공고</span>
+              {loading ? (
+                <Skeleton className="h-5 w-10" />
+              ) : (
+                <span className="font-bold text-blue-600">{watchlistCount}건</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -160,7 +168,6 @@ function MenuRow({
   labelClass,
   onClick,
   right,
-  disabled = false,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -168,26 +175,20 @@ function MenuRow({
   labelClass?: string;
   onClick?: () => void;
   right?: React.ReactNode;
-  disabled?: boolean;
 }) {
   return (
     <div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      onClick={disabled ? undefined : onClick}
+      onClick={onClick}
       onKeyDown={
-        onClick && !disabled
+        onClick
           ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }
           : undefined
       }
-      aria-disabled={disabled || undefined}
       className={cn(
         'flex items-center justify-between px-6 py-4 transition-colors',
-        disabled
-          ? 'opacity-40 cursor-not-allowed pointer-events-none'
-          : onClick
-          ? 'hover:bg-gray-50 cursor-pointer'
-          : ''
+        onClick ? 'hover:bg-gray-50 cursor-pointer' : ''
       )}
     >
       <div className="flex items-center gap-3 text-gray-700">

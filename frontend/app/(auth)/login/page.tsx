@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { login } from '@/lib/api/auth';
 
 interface FormErrors {
   userId: string;
@@ -17,24 +18,25 @@ interface FormErrors {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [userId, setUserId]           = useState('');
-  const [password, setPassword]       = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [saveId, setSaveId]           = useState(false);
-  const [errors, setErrors]           = useState<FormErrors>({ userId: '', password: '', auth: '' });
+  const [userId, setUserId]               = useState('');
+  const [password, setPassword]           = useState('');
+  const [showPassword, setShowPassword]   = useState(false);
+  const [saveId, setSaveId]               = useState(false);
+  const [submitting, setSubmitting]       = useState(false);
+  const [errors, setErrors]              = useState<FormErrors>({ userId: '', password: '', auth: '' });
 
   function clearFieldError(field: keyof FormErrors) {
     setErrors((e) => ({ ...e, [field]: '' }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const next: FormErrors = { userId: '', password: '', auth: '' };
     let hasError = false;
 
     if (!userId.trim()) {
-      next.userId = '아이디를 입력해주세요.';
+      next.userId = '이메일을 입력해주세요.';
       hasError = true;
     }
     if (!password.trim()) {
@@ -45,9 +47,15 @@ export default function LoginPage() {
     setErrors(next);
     if (hasError) return;
 
-    // TODO: API 연동 시 401 응답에서 아래 에러 표시
-    // setErrors((e) => ({ ...e, auth: '아이디 또는 비밀번호를 확인해주세요.' }));
-    router.push('/onboarding');
+    setSubmitting(true);
+    try {
+      await login(userId.trim(), password);
+      router.push('/');
+    } catch {
+      setErrors((e) => ({ ...e, auth: '아이디 또는 비밀번호를 확인해주세요.' }));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -74,19 +82,19 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* 아이디 */}
+          {/* 이메일 */}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="userId" className="text-sm font-medium text-gray-700">
-              아이디
+              이메일
             </label>
             <Input
               id="userId"
-              type="text"
+              type="email"
               value={userId}
               onChange={(e) => { setUserId(e.target.value); clearFieldError('userId'); clearFieldError('auth'); }}
-              placeholder="아이디를 입력하세요"
+              placeholder="이메일을 입력하세요"
               className={cn('h-11 text-base', errors.userId && 'border-red-500 focus-visible:ring-red-300')}
-              autoComplete="username"
+              autoComplete="email"
             />
             {errors.userId && (
               <p className="text-sm text-red-500" role="alert">{errors.userId}</p>
@@ -136,9 +144,10 @@ export default function LoginPage() {
           {/* 로그인 버튼 */}
           <Button
             type="submit"
+            disabled={submitting}
             className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold mt-1"
           >
-            로그인
+            {submitting ? '로그인 중...' : '로그인'}
           </Button>
         </form>
 

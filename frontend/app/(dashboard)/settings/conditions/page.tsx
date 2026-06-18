@@ -1,12 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
-import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -14,77 +11,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockNotices } from '@/data/mockNotices';
-import { SearchCondition } from '@/types/notice';
+import { bidTypeToKorean, REGIONS } from '@/lib/utils';
+import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import type { SearchCondition } from '@/types/notice';
 
 /* ── 상수 ── */
-const REGION_OPTIONS   = ['강원도', '경기도', '서울', '인천', '부산', '전국'];
-const CATEGORY_OPTIONS = ['건축공사', '시설공사', '건설공사', '용역', '물품'];
-const AGENCY_TYPES     = ['자치체', '공공기관', '교육청', '기타'];
-const AMOUNT_OPTIONS   = ['전체', '1억 미만', '1억 ~ 10억원', '10억 ~ 50억원', '50억 이상'];
-const LS_KEY           = 'bidsignal_conditions';
+const BID_TYPES = [
+  { code: 'CONSTRUCTION', label: '공사' },
+  { code: 'GOODS',        label: '물품' },
+  { code: 'SERVICE',      label: '용역' },
+  { code: 'FOREIGN',      label: '외자' },
+  { code: 'ETC',          label: '기타' },
+] as const;
+
+const LS_KEY = 'bidsignal_conditions';
 
 const INITIAL: SearchCondition = {
-  id: '1',
-  name: '내 관심 조건',
-  regions: ['강원도', '경기도'],
-  categories: ['건축공사', '시설공사'],
-  agencyTypes: ['자치체', '공공기관'],
-  amountRange: '1억 ~ 10억원',
-  keywords: '환경개선, 보수, 공사',
+  region: '',
+  bidTypes: [],
+  keywords: '',
   urgentAlertEnabled: false,
 };
-
-/* ── 재사용 태그 렌더러 ── */
-function TagList({ values, onRemove }: { values: string[]; onRemove: (v: string) => void }) {
-  return (
-    <>
-      {values.map((v) => (
-        <span
-          key={v}
-          className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-sm font-medium px-2.5 py-1 rounded-full"
-        >
-          {v}
-          <button
-            type="button"
-            onClick={() => onRemove(v)}
-            className="hover:text-blue-900 transition-colors"
-            aria-label={`${v} 제거`}
-          >
-            <X className="size-3" />
-          </button>
-        </span>
-      ))}
-    </>
-  );
-}
-
-/* ── 태그 추가용 인라인 Select ── */
-function AddTagSelect({
-  options,
-  current,
-  onAdd,
-}: {
-  options: string[];
-  current: string[];
-  onAdd: (v: string) => void;
-}) {
-  const available = options.filter((o) => !current.includes(o));
-  if (available.length === 0) return null;
-
-  return (
-    <Select value="" onValueChange={(v) => { if (v) onAdd(v); }}>
-      <SelectTrigger className="h-8 w-36 text-sm text-blue-600 border-blue-300 hover:bg-blue-50">
-        <SelectValue placeholder="+ 추가" />
-      </SelectTrigger>
-      <SelectContent>
-        {available.map((opt) => (
-          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
 
 /* ── 폼 필드 래퍼 ── */
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
@@ -108,11 +55,20 @@ function PreviewRow({ label, children }: { label: string; children: React.ReactN
 
 /* ── 메인 페이지 ── */
 export default function ConditionsPage() {
+  useRequireAuth();
+
   const [condition, setCondition] = useState<SearchCondition>(() => {
     if (typeof window === 'undefined') return INITIAL;
     try {
       const saved = localStorage.getItem(LS_KEY);
-      return saved ? (JSON.parse(saved) as SearchCondition) : INITIAL;
+      if (!saved) return INITIAL;
+      const parsed = JSON.parse(saved) as Record<string, unknown>;
+      return {
+        ...INITIAL,
+        ...parsed,
+        region:   typeof parsed.region === 'string' ? parsed.region : '',
+        bidTypes: Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
+      };
     } catch {
       return INITIAL;
     }
@@ -126,43 +82,20 @@ export default function ConditionsPage() {
   }, []);
 
   function handleSave() {
-    const toSave = { ...condition, urgentAlertEnabled: false };
-    localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+    localStorage.setItem(LS_KEY, JSON.stringify(condition));
     setShowToast(true);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setShowToast(false), 2500);
   }
 
-  function removeRegion(v: string) {
-    setCondition((c) => ({ ...c, regions: c.regions.filter((r) => r !== v) }));
-  }
-  function addRegion(v: string) {
+  function toggleBidType(code: string) {
     setCondition((c) => ({
       ...c,
-      regions: c.regions.includes(v) ? c.regions : [...c.regions, v],
+      bidTypes: c.bidTypes.includes(code)
+        ? c.bidTypes.filter((t) => t !== code)
+        : [...c.bidTypes, code],
     }));
   }
-
-  function removeCategory(v: string) {
-    setCondition((c) => ({ ...c, categories: c.categories.filter((r) => r !== v) }));
-  }
-  function addCategory(v: string) {
-    setCondition((c) => ({
-      ...c,
-      categories: c.categories.includes(v) ? c.categories : [...c.categories, v],
-    }));
-  }
-
-  function toggleAgencyType(v: string) {
-    setCondition((c) => ({
-      ...c,
-      agencyTypes: c.agencyTypes.includes(v)
-        ? c.agencyTypes.filter((t) => t !== v)
-        : [...c.agencyTypes, v],
-    }));
-  }
-
-  const matchingCount = mockNotices.filter((n) => condition.regions.includes(n.region)).length;
 
   return (
     <div className="flex gap-6 items-start">
@@ -180,58 +113,42 @@ export default function ConditionsPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           {/* 항목 1: 지역 */}
           <FormField label="지역">
-            <div className="flex flex-wrap items-center gap-2">
-              <TagList values={condition.regions} onRemove={removeRegion} />
-              <AddTagSelect options={REGION_OPTIONS} current={condition.regions} onAdd={addRegion} />
-            </div>
+            <Select
+              value={condition.region || 'all'}
+              onValueChange={(v) => setCondition((c) => ({ ...c, region: v === 'all' ? '' : v }))}
+            >
+              <SelectTrigger className="h-10 text-base max-w-xs">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="all">전체 (미설정)</SelectItem>
+                {REGIONS.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-2">
+              선택하지 않으면 전국 공고가 표시돼요.
+            </p>
           </FormField>
 
           {/* 항목 2: 공고 유형 */}
           <FormField label="공고 유형">
             <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {AGENCY_TYPES.map((type) => (
-                <label key={type} className="flex items-center gap-2 cursor-pointer select-none">
+              {BID_TYPES.map(({ code, label }) => (
+                <label key={code} className="flex items-center gap-2 cursor-pointer select-none">
                   <Checkbox
-                    checked={condition.agencyTypes.includes(type)}
-                    onCheckedChange={() => toggleAgencyType(type)}
+                    checked={condition.bidTypes.includes(code)}
+                    onCheckedChange={() => toggleBidType(code)}
                     className="size-5"
                   />
-                  <span className="text-base text-gray-700">{type}</span>
+                  <span className="text-base text-gray-700">{label}</span>
                 </label>
               ))}
             </div>
           </FormField>
 
-          {/* 항목 3: 업종/분류 */}
-          <FormField label="업종/분류">
-            <div className="flex flex-wrap items-center gap-2">
-              <TagList values={condition.categories} onRemove={removeCategory} />
-              <AddTagSelect
-                options={CATEGORY_OPTIONS}
-                current={condition.categories}
-                onAdd={addCategory}
-              />
-            </div>
-          </FormField>
-
-          {/* 항목 4: 공고 금액 */}
-          <FormField label="공고 금액">
-            <Select
-              value={condition.amountRange}
-              onValueChange={(v) => setCondition((c) => ({ ...c, amountRange: v }))}
-            >
-              <SelectTrigger className="w-56 h-10 text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AMOUNT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-
-          {/* 항목 5: 키워드 */}
+          {/* 항목 3: 키워드 */}
           <FormField label="키워드">
             <Input
               value={condition.keywords}
@@ -244,27 +161,6 @@ export default function ConditionsPage() {
             </p>
           </FormField>
 
-          {/* 항목 6: 마감 임박 알림 받기 (3차 예정 — 비활성) */}
-          <div className="flex justify-between items-center opacity-50">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-semibold text-gray-800">
-                  마감 임박 알림 받기
-                </span>
-                <span className="text-[11px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-medium leading-none">
-                  3차 업데이트 예정
-                </span>
-              </div>
-              <p className="text-sm text-gray-500 mt-0.5">
-                마감 7일 전부터 알림을 보내드립니다.
-              </p>
-            </div>
-            <Switch
-              checked={false}
-              disabled
-              aria-label="마감 임박 알림 (준비 중)"
-            />
-          </div>
         </div>
 
         {/* 섹션 3: 저장 버튼 */}
@@ -285,62 +181,48 @@ export default function ConditionsPage() {
           <h3 className="font-semibold text-gray-900 text-base mb-3">현재 설정</h3>
           <div className="flex flex-col gap-3 text-sm">
             <PreviewRow label="지역">
+              {condition.region ? (
+                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium inline-block mt-0.5">
+                  {condition.region}
+                </span>
+              ) : (
+                <span className="text-gray-400 text-xs">미설정 (전국)</span>
+              )}
+            </PreviewRow>
+
+            <PreviewRow label="공고 유형">
               <div className="flex flex-wrap gap-1 mt-0.5">
-                {condition.regions.length > 0 ? (
-                  condition.regions.map((r) => (
-                    <span key={r} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                      {r}
+                {condition.bidTypes.length > 0 ? (
+                  condition.bidTypes.map((code) => (
+                    <span
+                      key={code}
+                      className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium"
+                    >
+                      {bidTypeToKorean(code)}
                     </span>
                   ))
                 ) : (
-                  <span className="text-gray-400 text-xs">미설정</span>
+                  <span className="text-gray-400 text-xs">미설정 (전체)</span>
                 )}
               </div>
-            </PreviewRow>
-
-            <PreviewRow label="업종">
-              <div className="flex flex-wrap gap-1 mt-0.5">
-                {condition.categories.length > 0 ? (
-                  condition.categories.map((c) => (
-                    <span key={c} className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                      {c}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-xs">미설정</span>
-                )}
-              </div>
-            </PreviewRow>
-
-            <PreviewRow label="금액">
-              <span className="text-gray-700">{condition.amountRange}</span>
             </PreviewRow>
 
             <PreviewRow label="키워드">
-              <span className="text-gray-700 break-all">
-                {condition.keywords || <span className="text-gray-400">미설정</span>}
-              </span>
+              {condition.keywords ? (
+                <span className="text-gray-700 break-all">{condition.keywords}</span>
+              ) : (
+                <span className="text-gray-400 text-xs">미설정</span>
+              )}
             </PreviewRow>
           </div>
         </div>
 
-        {/* 패널 2: 맞춤 공고 현황 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 text-base mb-3">현재 조건 맞춤 공고</h3>
-          <p className="text-2xl font-bold text-blue-600 mb-1">
-            조건에 맞는 공고 <span>{matchingCount}</span>건
-          </p>
-          <Link href="/notices" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-            공고 보러가기 →
-          </Link>
-        </div>
-
-        {/* 패널 3: 도움말 카드 */}
+        {/* 패널 2: 설정 도움말 */}
         <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
           <h3 className="font-semibold text-blue-800 text-base mb-3">설정 도움말</h3>
           <ul className="flex flex-col gap-2">
             {[
-              '지역과 업종을 좁힐수록 더 정확한 공고를 추천받아요.',
+              '지역을 선택하면 해당 지역 공고만 표시돼요.',
               '키워드는 공고명에서 검색됩니다.',
               '저장된 조건은 공고 찾기의 기본 필터로 자동 적용돼요.',
             ].map((tip) => (

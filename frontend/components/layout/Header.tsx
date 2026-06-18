@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ACCESS_TOKEN_KEY } from '@/lib/api';
 
 export function Header() {
+  const [isLoggedIn] = useState(
+    () => typeof window !== 'undefined' && !!localStorage.getItem(ACCESS_TOKEN_KEY)
+  );
   const [showNotice, setShowNotice] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -19,14 +24,14 @@ export function Header() {
   }, []);
 
   return (
-    <header className="fixed top-0 right-0 left-[220px] h-14 bg-white border-b border-gray-200 z-10 px-6 flex items-center justify-end">
+    <header className="fixed top-0 right-0 left-[220px] h-14 bg-white border-b border-gray-200 z-10 px-6 flex items-center justify-end gap-2">
+      {/* 알림 벨 */}
       <div className="relative">
         <Button
           variant="ghost"
           size="icon"
           onClick={handleBellClick}
           aria-label="알림 (준비 중)"
-          className="relative"
         >
           <Bell className="size-5 text-gray-400" />
         </Button>
@@ -41,6 +46,23 @@ export function Header() {
           </div>
         )}
       </div>
+
+      {/* 로그인 상태에 따라 다르게 표시 */}
+      {isLoggedIn ? (
+        <Button variant="ghost" size="icon" asChild aria-label="마이페이지">
+          <Link href="/mypage">
+            <User className="size-5 text-gray-400" />
+          </Link>
+        </Button>
+      ) : (
+        <Button
+          asChild
+          size="sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 h-8"
+        >
+          <Link href="/login">로그인</Link>
+        </Button>
+      )}
     </header>
   );
 }

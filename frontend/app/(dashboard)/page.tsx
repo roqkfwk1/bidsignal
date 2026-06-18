@@ -1,37 +1,77 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Bell, Bookmark, Inbox } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bookmark, ClipboardList, Inbox } from 'lucide-react';
 
 import { TodayTodoCard } from '@/components/dashboard/TodayTodoCard';
 import { DDayBadge } from '@/components/common/DDayBadge';
 import { Button } from '@/components/ui/button';
-import { mockAlerts } from '@/data/mockAlerts';
-import { mockDashboardSummary, mockRecentSavedNotices } from '@/data/mockDashboard';
-
-const stats = [
-  {
-    Icon: Bookmark,
-    label: '관심 공고',
-    count: 4,
-    href: '/watchlist',
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-600',
-  },
-  {
-    Icon: Bell,
-    label: '읽지 않은 알림',
-    count: mockAlerts.filter((a) => !a.isRead).length,
-    href: '/alerts',
-    iconBg: 'bg-red-50',
-    iconColor: 'text-red-600',
-  },
-];
+import { Skeleton } from '@/components/ui/skeleton';
+import { getDashboardSummary } from '@/lib/api/dashboard';
+import { getWatchlist } from '@/lib/api/watchlist';
+import { ACCESS_TOKEN_KEY } from '@/lib/api';
+import { formatIsoDate } from '@/lib/utils';
+import type { DashboardSummary, WatchlistItem } from '@/types/notice';
 
 export default function HomePage() {
+  const router = useRouter();
+  const [summary, setSummary]             = useState<DashboardSummary>({ urgentCount: 0, preparingCount: 0, weeklyCount: 0 });
+  const [recentNotices, setRecentNotices] = useState<WatchlistItem[]>([]);
+  const [watchlistTotal, setWatchlistTotal] = useState(0);
+  const [loading, setLoading]             = useState(true);
+
+  useEffect(() => {
+    /* 비로그인 → 공개 페이지(공고 찾기)로 이동. 홈 대시보드는 로그인 전용. */
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
+      router.replace('/notices');
+      return;
+    }
+
+    async function load() {
+      try {
+        const [summaryData, watchlistData] = await Promise.allSettled([
+          getDashboardSummary(),
+          getWatchlist(),
+        ]);
+
+        if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
+        if (watchlistData.status === 'fulfilled') {
+          setWatchlistTotal(watchlistData.value.length);
+          setRecentNotices(watchlistData.value.slice(0, 3));
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [router]);
+
+  const stats = [
+    {
+      Icon: Bookmark,
+      label: '관심 공고',
+      count: watchlistTotal,
+      href: '/watchlist',
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+    },
+    {
+      Icon: ClipboardList,
+      label: '준비중 공고',
+      count: summary.preparingCount,
+      href: '/watchlist?status=preparing',
+      iconBg: 'bg-green-50',
+      iconColor: 'text-green-600',
+    },
+  ];
+
   return (
     <div>
       {/* 인사 영역 */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">안녕하세요, 성준님!</h1>
+        <h1 className="text-2xl font-bold text-gray-900">안녕하세요!</h1>
         <p className="text-gray-500 mt-1 text-base">오늘도 새로운 기회를 찾아보세요.</p>
       </div>
 
@@ -40,11 +80,14 @@ export default function HomePage() {
         {/* ── 왼쪽 메인 ── */}
         <div className="flex-1 min-w-0 flex flex-col gap-6">
           {/* 섹션 1: 오늘 할 일 */}
-          <TodayTodoCard
-            urgentCount={mockDashboardSummary.urgentCount}
-            preparingCount={mockDashboardSummary.preparingCount}
-            weeklyCount={mockDashboardSummary.weeklyCount}
-          />
+          {loading ? (
+            <Skeleton className="h-40 w-full rounded-xl" />
+          ) : (
+            <TodayTodoCard
+              urgentCount={summary.urgentCount}
+              weeklyCount={summary.weeklyCount}
+            />
+          )}
 
           {/* 섹션 2: 최근 저장한 공고 */}
           <section>
@@ -61,7 +104,19 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {mockRecentSavedNotices.length === 0 ? (
+            {loading ? (
+              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between px-5 py-4 min-h-[56px]">
+                    <div className="flex flex-col gap-1.5">
+                      <Skeleton className="h-4 w-52" />
+                      <Skeleton className="h-3 w-28" />
+                    </div>
+                    <Skeleton className="h-4 w-10" />
+                  </div>
+                ))}
+              </div>
+            ) : recentNotices.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 py-16 flex flex-col items-center gap-3 text-center">
                 <Inbox className="size-12 text-gray-300" strokeWidth={1.5} />
                 <p className="text-base font-medium text-gray-700">아직 저장한 공고가 없어요</p>
@@ -72,23 +127,26 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
-                {mockRecentSavedNotices.map((notice) => (
-                  <Link
-                    key={notice.id}
-                    href={`/notices/${notice.id}`}
-                    className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors min-h-[56px]"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-base font-medium text-gray-900 truncate">
-                        {notice.name}
-                      </p>
-                      <p className="text-sm text-gray-500 mt-0.5">{notice.agency}</p>
-                    </div>
-                    <div className="ml-4 flex-shrink-0">
-                      <DDayBadge dDay={notice.dDay} deadline={notice.deadline} />
-                    </div>
-                  </Link>
-                ))}
+                {recentNotices.map((notice) => {
+                  const deadline = formatIsoDate(notice.bidClseDt);
+                  return (
+                    <Link
+                      key={notice.watchlistItemId}
+                      href={`/notices/${notice.noticeId}`}
+                      className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors min-h-[56px]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-base font-medium text-gray-900 truncate">
+                          {notice.bidNtceNm}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-0.5">{notice.ntceInsttNm}</p>
+                      </div>
+                      <div className="ml-4 flex-shrink-0">
+                        <DDayBadge dDay={notice.dDay} deadline={deadline} />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -111,7 +169,11 @@ export default function HomePage() {
                     </div>
                     <span className="text-base text-gray-700">{label}</span>
                   </div>
-                  <span className="text-lg font-bold text-gray-900">{count}건</span>
+                  {loading ? (
+                    <Skeleton className="h-5 w-8" />
+                  ) : (
+                    <span className="text-lg font-bold text-gray-900">{count}건</span>
+                  )}
                 </Link>
               ))}
             </div>

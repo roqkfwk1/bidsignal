@@ -1,20 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Star, Download, FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Star, Download, FileText, ExternalLink } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { NoticeStatusBadge } from '@/components/notices/NoticeStatusBadge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { DDayBadge } from '@/components/common/DDayBadge';
 import { StatusDropdown } from '@/components/common/StatusDropdown';
 import { SaveToast } from '@/components/common/SaveToast';
-import { Notice, SavedNotice, WatchlistStatus } from '@/types/notice';
+import { ApiErrorState } from '@/components/common/ApiErrorState';
+import { getNotice } from '@/lib/api/notices';
+import {
+  getWatchlist,
+  saveWatchlist,
+  deleteWatchlist,
+  updateWatchlistStatus,
+  updateWatchlistMemo,
+} from '@/lib/api/watchlist';
+import { ACCESS_TOKEN_KEY } from '@/lib/api';
+import {
+  computeDDay,
+  formatIsoDate,
+  formatWon,
+  formatRegion,
+  bidTypeToKorean,
+} from '@/lib/utils';
+import type { NoticeDetail, WatchlistStatus } from '@/types/notice';
 
 interface Props {
-  notice: Notice;
-  savedNotice?: SavedNotice;
+  noticeId: number;
 }
 
 const mockFiles = [
@@ -26,27 +51,142 @@ const mockFiles = [
 const qualifications = [
   { label: '업종 제한', value: '건축공사업 면허 보유' },
   { label: '실적 요건', value: '최근 3년 이내 유사 공사 실적' },
-  { label: '지역 제한', value: '강원도 소재 업체 우대' },
+  { label: '지역 제한', value: '해당 지역 소재 업체 우대' },
   { label: '기타 요건', value: '사업자 등록증 필수' },
 ];
 
-export function NoticeDetailClient({ notice, savedNotice }: Props) {
-  const [isBookmarked, setIsBookmarked]       = useState(!!savedNotice);
-  const [watchlistStatus, setWatchlistStatus] = useState<WatchlistStatus>(
-    savedNotice?.watchlistStatus ?? 'REVIEWING'
+/* ── 로딩 스켈레톤 ── */
+function DetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <Skeleton className="h-5 w-24" />
+      <div className="flex items-start justify-between gap-4">
+        <Skeleton className="h-8 w-80" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <Skeleton className="h-9 w-32 rounded-md" />
+        </div>
+      </div>
+      <div className="flex gap-6">
+        <div className="flex-1 flex flex-col gap-5">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+        <div className="w-80 flex flex-col gap-4">
+          <Skeleton className="h-36 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
   );
-  const [memo, setMemo]         = useState(savedNotice?.memo ?? '');
-  const [showToast, setShowToast] = useState(false);
+}
 
-  function handleToggleSave() {
-    const willSave = !isBookmarked;
-    setIsBookmarked(willSave);
-    if (willSave) {
-      setWatchlistStatus('REVIEWING');
-      setMemo('');
-      setShowToast(true);
+/* ── 메인 컴포넌트 ── */
+export function NoticeDetailClient({ noticeId }: Props) {
+  const router = useRouter();
+  const [notice, setNotice]               = useState<NoticeDetail | null>(null);
+  const [loading, setLoading]             = useState(true);
+  const [fetchError, setFetchError]       = useState(false);
+
+  const [isBookmarked, setIsBookmarked]       = useState(false);
+  const [watchlistStatus, setWatchlistStatus] = useState<WatchlistStatus>('REVIEWING');
+  const [memo, setMemo]                       = useState('');
+  const [showToast, setShowToast]             = useState(false);
+  const [showLoginModal, setShowLoginModal]   = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setFetchError(false);
+
+    /* 비로그인 상태에서 watchlist API를 호출하면 401 → 전역 login redirect 발생하므로 토큰이 있을 때만 호출 */
+    const isLoggedIn = !!localStorage.getItem(ACCESS_TOKEN_KEY);
+    const [noticeResult, watchlistResult] = await Promise.allSettled([
+      getNotice(noticeId),
+      isLoggedIn ? getWatchlist() : Promise.resolve([]),
+    ]);
+
+    if (noticeResult.status === 'rejected') {
+      setFetchError(true);
+      setLoading(false);
+      return;
+    }
+
+    setNotice(noticeResult.value);
+
+    if (watchlistResult.status === 'fulfilled') {
+      const saved = watchlistResult.value.find((w) => w.noticeId === noticeId);
+      if (saved) {
+        setIsBookmarked(true);
+        setWatchlistStatus(saved.status);
+        setMemo(saved.memo ?? '');
+      }
+    }
+
+    setLoading(false);
+  }, [noticeId]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { load(); }, [load]);
+
+  async function handleToggleSave() {
+    if (!notice) return;
+
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (isBookmarked) {
+      try {
+        await deleteWatchlist(noticeId);
+        setIsBookmarked(false);
+      } catch { /* 실패 시 상태 유지 */ }
+    } else {
+      try {
+        await saveWatchlist(noticeId);
+        setIsBookmarked(true);
+        setWatchlistStatus('REVIEWING');
+        setMemo('');
+        setShowToast(true);
+      } catch { /* 실패 시 상태 유지 */ }
     }
   }
+
+  async function handleStatusChange(status: WatchlistStatus) {
+    const prev = watchlistStatus;
+    setWatchlistStatus(status);
+    try {
+      await updateWatchlistStatus(noticeId, status);
+    } catch {
+      setWatchlistStatus(prev);
+    }
+  }
+
+  async function handleMemoSave() {
+    try {
+      await updateWatchlistMemo(noticeId, memo);
+    } catch { /* 실패 무시 */ }
+  }
+
+  if (loading) return <DetailSkeleton />;
+
+  if (fetchError || !notice) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Link href="/notices" className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-base transition-colors">
+          <ArrowLeft className="size-4" /> 목록으로
+        </Link>
+        <div className="bg-white rounded-xl border border-gray-200">
+          <ApiErrorState onRetry={load} />
+        </div>
+      </div>
+    );
+  }
+
+  const dDay     = notice.bidClseDt ? computeDDay(notice.bidClseDt) : null;
+  const deadline = formatIsoDate(notice.bidClseDt);
+  const amount   = formatWon(notice.presmptPrce || notice.bdgtAmt);
+  const bidType  = bidTypeToKorean(notice.bidType);
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,14 +201,21 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
         </Link>
 
         <div className="flex items-start justify-between gap-4">
-          {/* 공고명 + 상태 배지 */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-gray-900">{notice.name}</h1>
-            <NoticeStatusBadge status={notice.status} />
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900">{notice.bidNtceNm}</h1>
 
-          {/* 우측 상단 CTA */}
           <div className="flex items-center gap-2 flex-shrink-0 mt-1">
+            {notice.bidNtceDtlUrl && (
+              <a
+                href={notice.bidNtceDtlUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" className="gap-1.5">
+                  <ExternalLink className="size-4" />
+                  공고 원문 보기
+                </Button>
+              </a>
+            )}
             <button
               onClick={handleToggleSave}
               aria-label={isBookmarked ? '관심 공고 해제' : '관심 공고 추가'}
@@ -100,25 +247,23 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
           {/* 섹션 1: 공고 기본 정보 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="grid grid-cols-2 gap-4">
-              <InfoItem label="공고번호" value={notice.bidNo} />
-              <InfoItem label="공고기관" value={notice.agency} />
-              <InfoItem label="공고일" value="2025.05.01" />
-              <InfoItem label="입찰방식" value={notice.contractType} />
-              <InfoItem label="예산금액" value={notice.amount} />
-              <InfoItem label="업종/분류" value={notice.category} />
+              <InfoItem label="공고번호"  value={notice.bidNtceNo} />
+              <InfoItem label="공고기관"  value={notice.ntceInsttNm} />
+              <InfoItem label="수요기관"  value={notice.dminsttNm || '-'} />
+              <InfoItem label="입찰방식"  value={notice.bidMethdNm || '-'} />
+              <InfoItem label="예산금액"  value={amount} />
+              <InfoItem label="공고 유형" value={bidType} />
 
               {/* 마감일 강조 */}
               <div
                 className={`col-span-2 rounded-lg p-4 ${
-                  notice.dDay <= 3 ? 'bg-red-50' : notice.dDay <= 7 ? 'bg-orange-50' : 'bg-gray-50'
+                  dDay !== null && dDay <= 3 ? 'bg-red-50' : dDay !== null && dDay <= 7 ? 'bg-orange-50' : 'bg-gray-50'
                 }`}
               >
                 <p className="text-xs text-gray-500 mb-1">마감일</p>
                 <div className="flex items-center gap-3">
-                  <span className="text-base font-semibold text-gray-900">
-                    {notice.deadline}
-                  </span>
-                  <DDayBadge dDay={notice.dDay} deadline={notice.deadline} />
+                  <span className="text-base font-semibold text-gray-900">{deadline}</span>
+                  <DDayBadge dDay={dDay} deadline={deadline} />
                 </div>
               </div>
             </div>
@@ -141,20 +286,14 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
                 <section className="mb-6">
                   <h3 className="font-semibold text-gray-900 text-base mb-2">사업 개요</h3>
                   <p className="text-base text-gray-600 leading-relaxed">
-                    관내 경로당 시설 환경개선을 위한 공사 사업입니다.
+                    {notice.ntceKindNm || '상세 내용은 공고 원문을 확인하세요.'}
                   </p>
                 </section>
-                <section>
-                  <h3 className="font-semibold text-gray-900 text-base mb-3">공사 내용</h3>
-                  <ul className="flex flex-col gap-2">
-                    {['내부 도배 및 장판 교체', '화장실 개선 공사', '냉·난방 설비 교체'].map((item) => (
-                      <li key={item} className="flex items-start gap-2.5 text-base text-gray-600">
-                        <span className="size-1.5 rounded-full bg-gray-400 flex-shrink-0 mt-2.5" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                {notice.reNtceYn === 'Y' && (
+                  <section className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <p className="text-sm text-amber-700 font-medium">이 공고는 정정된 공고입니다. 원문에서 변경 내용을 확인하세요.</p>
+                  </section>
+                )}
               </TabsContent>
 
               <TabsContent value="qualifications" className="p-6 text-base">
@@ -171,10 +310,7 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
               <TabsContent value="files" className="p-6 text-base">
                 <div className="flex flex-col divide-y divide-gray-100">
                   {mockFiles.map(({ name }) => (
-                    <div
-                      key={name}
-                      className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                    >
+                    <div key={name} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                       <div className="flex items-center gap-3">
                         <FileText className="size-5 text-gray-400" />
                         <span className="text-base text-gray-700">{name}</span>
@@ -198,16 +334,13 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
 
         {/* ── 오른쪽 보조 패널 ── */}
         <div className="w-80 flex-shrink-0 flex flex-col gap-4">
-          {/* 패널 1: 관심 공고 액션 영역 */}
+          {/* 패널 1: 관심 공고 액션 */}
           {isBookmarked ? (
             <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-4">
-              {/* 상태 변경 */}
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-2">진행 상태</p>
-                <StatusDropdown status={watchlistStatus} onChange={setWatchlistStatus} />
+                <StatusDropdown status={watchlistStatus} onChange={handleStatusChange} />
               </div>
-
-              {/* 메모 입력 */}
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-2">메모</p>
                 <textarea
@@ -220,9 +353,7 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
                 />
                 <div className="flex justify-between items-center mt-1.5">
                   <span className="text-xs text-gray-400">{memo.length}/200</span>
-                  <Button size="sm" onClick={() => {}}>
-                    저장
-                  </Button>
+                  <Button size="sm" onClick={handleMemoSave}>저장</Button>
                 </div>
               </div>
             </div>
@@ -244,24 +375,20 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h3 className="font-semibold text-gray-900 text-base mb-3">핵심 정보</h3>
             <div className="flex flex-col">
-              {(
-                [
-                  { label: '마감까지', value: notice.dDay, isDay: true },
-                  { label: '예산',     value: notice.amount },
-                  { label: '지역',     value: notice.region },
-                  { label: '입찰방식', value: notice.contractType },
-                  { label: '업종',     value: notice.category },
-                ] as Array<{ label: string; value: string | number; isDay?: boolean }>
-              ).map(({ label, value, isDay }, i, arr) => (
+              {[
+                { label: '마감까지', isDay: true },
+                { label: '예산금액', value: amount },
+                { label: '참가지역', value: formatRegion(notice.prtcptLmtRgnNm) },
+                { label: '입찰방식', value: notice.bidMethdNm || '-' },
+                { label: '공고 유형', value: bidType },
+              ].map(({ label, value, isDay }, i, arr) => (
                 <div
                   key={label}
-                  className={`flex justify-between items-center py-2 text-sm ${
-                    i < arr.length - 1 ? 'border-b border-gray-100' : ''
-                  }`}
+                  className={`flex justify-between items-center py-2 text-sm ${i < arr.length - 1 ? 'border-b border-gray-100' : ''}`}
                 >
                   <span className="text-gray-500">{label}</span>
                   {isDay ? (
-                    <DDayBadge dDay={notice.dDay} deadline={notice.deadline} />
+                    <DDayBadge dDay={dDay} deadline={deadline} />
                   ) : (
                     <span className="text-gray-900 font-medium">{value}</span>
                   )}
@@ -272,7 +399,7 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
 
           {/* 패널 3: 초보자 팁 */}
           <div className="bg-amber-50 rounded-xl border border-amber-100 p-4">
-            <h3 className="font-semibold text-amber-800 text-base mb-2">💡 초보자 팁</h3>
+            <h3 className="font-semibold text-amber-800 text-base mb-2">초보자 팁</h3>
             <p className="text-sm text-amber-700 leading-relaxed">
               마감일 3일 전까지 서류를 준비해두는 것을 권장합니다.
               <br />
@@ -284,6 +411,27 @@ export function NoticeDetailClient({ notice, savedNotice }: Props) {
 
       {/* 저장 완료 토스트 */}
       <SaveToast show={showToast} onHide={() => setShowToast(false)} />
+
+      {/* 로그인 유도 모달 */}
+      <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>로그인이 필요해요</DialogTitle>
+            <DialogDescription>
+              관심 공고를 저장하려면 로그인이 필요합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLoginModal(false)}>취소</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => router.push('/login')}
+            >
+              로그인하러 가기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

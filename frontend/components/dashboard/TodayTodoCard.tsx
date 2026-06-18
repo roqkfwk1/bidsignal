@@ -1,53 +1,29 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
-import { X } from 'lucide-react';
 
 interface TodayTodoCardProps {
   urgentCount: number;
-  preparingCount: number;
   weeklyCount: number;
 }
 
-export function TodayTodoCard({ urgentCount, preparingCount, weeklyCount }: TodayTodoCardProps) {
-  const [closed, setClosed] = useState(false);
-
-  if (closed) return null;
-
+export function TodayTodoCard({ urgentCount, weeklyCount }: TodayTodoCardProps) {
   const todos = [
     {
-      label: '마감 임박 공고 확인',
+      label: '마감 임박 공고 확인 (D-3 이내)',
       count: urgentCount,
       countColor: 'text-red-300 font-bold',
-      href: '/watchlist?tab=urgent',
+      href: '/watchlist?status=all&dueWithin=3',
     },
     {
-      label: '준비 중인 공고',
-      count: preparingCount,
-      countColor: 'text-blue-200 font-bold',
-      href: '/watchlist?status=PREPARING',
-    },
-    {
-      label: '이번 주 마감 공고',
+      label: '곧 마감될 공고 (D-4~D-7)',
       count: weeklyCount,
       countColor: 'text-orange-300 font-bold',
-      href: '/watchlist?tab=urgent',
+      href: '/watchlist?status=all&dueWithin=7',
     },
   ];
 
   return (
     <div className="bg-blue-600 rounded-xl p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-white font-semibold text-lg">오늘 할 일</h2>
-        <button
-          onClick={() => setClosed(true)}
-          className="text-white/60 hover:text-white transition-colors"
-          aria-label="닫기"
-        >
-          <X className="size-5" />
-        </button>
-      </div>
+      <h2 className="text-white font-semibold text-lg mb-4">오늘 할 일</h2>
 
       <div className="flex flex-col gap-2">
         {todos.map((todo) => (

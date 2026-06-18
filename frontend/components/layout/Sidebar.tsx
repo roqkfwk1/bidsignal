@@ -6,8 +6,6 @@ import {
   Home,
   Search,
   Bookmark,
-  Bell,
-  CheckSquare,
   Settings,
   User,
   HelpCircle,
@@ -19,18 +17,15 @@ interface MenuItem {
   href: string;
   label: string;
   icon: React.ElementType;
-  disabled?: boolean;
 }
 
 const menuItems: MenuItem[] = [
-  { href: '/',                   label: '홈',          icon: Home },
-  { href: '/notices',            label: '공고 찾기',    icon: Search },
-  { href: '/watchlist',          label: '관심 공고',    icon: Bookmark },
-  { href: '/alerts',             label: '알림',         icon: Bell,        disabled: true },
-  { href: '/checklist',          label: '체크리스트',   icon: CheckSquare, disabled: true },
+  { href: '/',                    label: '홈',            icon: Home },
+  { href: '/notices',             label: '공고 찾기',      icon: Search },
+  { href: '/watchlist',           label: '관심 공고',      icon: Bookmark },
   { href: '/settings/conditions', label: '관심 조건 설정', icon: Settings },
-  { href: '/mypage',             label: '마이페이지',   icon: User },
-  { href: '/help',               label: '도움말',       icon: HelpCircle },
+  { href: '/mypage',              label: '마이페이지',     icon: User },
+  { href: '/help',                label: '도움말',         icon: HelpCircle },
 ];
 
 export function Sidebar() {
@@ -48,27 +43,8 @@ export function Sidebar() {
 
       {/* 메뉴 */}
       <nav className="flex-1 py-4">
-        {menuItems.map(({ href, label, icon: Icon, disabled }) => {
-          /* 비활성 메뉴 */
-          if (disabled) {
-            return (
-              <div
-                key={href}
-                aria-disabled="true"
-                title="3차 업데이트 예정"
-                className="flex items-center gap-3 w-full px-4 py-3 text-base border-l-2 border-transparent cursor-not-allowed select-none opacity-40"
-              >
-                <Icon className="size-5 flex-shrink-0" />
-                <span className="flex-1">{label}</span>
-                <span className="text-[11px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-medium leading-none">
-                  준비 중
-                </span>
-              </div>
-            );
-          }
-
+        {menuItems.map(({ href, label, icon: Icon }) => {
           const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
-
           return (
             <Link
               key={href}
