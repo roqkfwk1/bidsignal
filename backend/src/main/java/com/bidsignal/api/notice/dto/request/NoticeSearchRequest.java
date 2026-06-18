@@ -18,6 +18,7 @@ public class NoticeSearchRequest {
     private String prtcptLmtRgnNm;  // 지역
     private Long minAmt;            // 최소금액
     private Long maxAmt;            // 최대금액
+    private Boolean includeExpired; // 마감 공고 포함 여부
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate bidClseDateFrom;    // 입찰 마감일 검색 시작일

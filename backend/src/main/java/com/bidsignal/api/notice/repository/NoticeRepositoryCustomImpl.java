@@ -6,6 +6,8 @@ import com.bidsignal.api.notice.dto.request.NoticeSearchRequest;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +28,11 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
-    // 공고 조건 검색
     @Override
     public Page<Notice> search(NoticeSearchRequest request, Pageable pageable) {
+
+        LocalDateTime now = LocalDateTime.now();
+
         List<Notice> content = queryFactory
                 .selectFrom(notice)
                 .where(
@@ -37,9 +42,10 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                         minAmountGoe(request.getMinAmt()),
                         maxAmountLoe(request.getMaxAmt()),
                         deadlineFromGoe(request.getBidClseDateFrom()),
-                        deadlineToLoe(request.getBidClseDateTo())
+                        deadlineToLoe(request.getBidClseDateTo()),
+                        notExpired(request.getIncludeExpired(), now)
                 )
-                .orderBy(toOrderSpecifiers(pageable.getSort()))
+                .orderBy(toOrderSpecifiers(pageable.getSort(), request.getIncludeExpired(), now))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -54,7 +60,8 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                         minAmountGoe(request.getMinAmt()),
                         maxAmountLoe(request.getMaxAmt()),
                         deadlineFromGoe(request.getBidClseDateFrom()),
-                        deadlineToLoe(request.getBidClseDateTo())
+                        deadlineToLoe(request.getBidClseDateTo()),
+                        notExpired(request.getIncludeExpired(), now)
                 )
                 .fetchOne();
 
@@ -62,27 +69,50 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
     }
 
     /**
-     * 요청받은 정렬 옵션을 QueryDSL 정렬 조건으로 변환하고, 없으면 공고일 최신순으로 정렬한다.
+     * 요청받은 정렬 옵션을 QueryDSL 정렬 조건으로 변환한다.
      */
-    private OrderSpecifier<?>[] toOrderSpecifiers(Sort sort) {
+    private OrderSpecifier<?>[] toOrderSpecifiers(Sort sort, Boolean includeExpired, LocalDateTime now) {
         List<OrderSpecifier<?>> orders = new ArrayList<>();
+
+        if (Boolean.TRUE.equals(includeExpired)) {
+            NumberExpression<Integer> expiredFlag = new CaseBuilder()
+                    .when(notice.bidClseDt.isNull()).then(0)
+                    .when(notice.bidClseDt.goe(now)).then(0)
+                    .otherwise(1);
+
+            orders.add(new OrderSpecifier<>(Order.ASC, expiredFlag));
+        }
+
+        boolean hasSort = false;
 
         for (Sort.Order order : sort) {
             Order direction = order.isAscending() ? Order.ASC : Order.DESC;
             String property = order.getProperty();
 
             switch (property) {
-                case "bidClseDt" -> orders.add(new OrderSpecifier<>(direction, notice.bidClseDt).nullsLast());
-                case "bidNtceDt" -> orders.add(new OrderSpecifier<>(direction, notice.bidNtceDt).nullsLast());
-                case "bdgtAmt" -> orders.add(new OrderSpecifier<>(direction, notice.bdgtAmt).nullsLast());
-                case "createdAt" -> orders.add(new OrderSpecifier<>(direction, notice.createdAt).nullsLast());
+                case "bidClseDt" -> {
+                    orders.add(new OrderSpecifier<>(direction, notice.bidClseDt).nullsLast());
+                    hasSort = true;
+                }
+                case "bidNtceDt" -> {
+                    orders.add(new OrderSpecifier<>(direction, notice.bidNtceDt).nullsLast());
+                    hasSort = true;
+                }
+                case "bdgtAmt" -> {
+                    orders.add(new OrderSpecifier<>(direction, notice.bdgtAmt).nullsLast());
+                    hasSort = true;
+                }
+                case "createdAt" -> {
+                    orders.add(new OrderSpecifier<>(direction, notice.createdAt).nullsLast());
+                    hasSort = true;
+                }
                 default -> {
-                    // 허용하지 않는 정렬 조건은 무시
+                    // 지원하지 않는 정렬 조건은 무시한다.
                 }
             }
         }
 
-        if (orders.isEmpty()) {
+        if (!hasSort) {
             orders.add(notice.bidNtceDt.desc().nullsLast());
             orders.add(notice.id.desc());
         }
@@ -144,5 +174,14 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
         }
 
         return notice.bidClseDt.loe(to.atTime(LocalTime.MAX));
+    }
+
+    private BooleanExpression notExpired(Boolean includeExpired, LocalDateTime now) {
+        if (Boolean.TRUE.equals(includeExpired)) {
+            return null;
+        }
+
+        return notice.bidClseDt.isNull()
+                .or(notice.bidClseDt.goe(now));
     }
 }
