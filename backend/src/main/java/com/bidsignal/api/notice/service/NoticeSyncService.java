@@ -30,6 +30,21 @@ public class NoticeSyncService {
     private final NaraBidNoticeClient naraBidNoticeClient;
     private final NoticeRepository noticeRepository;
 
+
+    /**
+     * 오늘 등록된 나라장터 공고를 동기화한다.
+     */
+    public void syncTodayNotices() {
+
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
+
+        String beginDateTime = now.toLocalDate().atStartOfDay().format(formatter);
+        String endDateTime = now.format(formatter);
+
+        syncAllBidNotices(beginDateTime, endDateTime);
+    }
+
     /**
      * 나라장터 입찰공고를 조회해서 DB에 저장한다.
      */
@@ -46,8 +61,13 @@ public class NoticeSyncService {
         );
 
         for (BidType bidType : bidTypes) {
-            NoticeSyncResponse result = syncBidNotices(bidType, beginDateTime, endDateTime);
-            totalResult = totalResult.plus(result);
+            try {
+                NoticeSyncResponse result = syncBidNotices(bidType, beginDateTime, endDateTime);
+                totalResult = totalResult.plus(result);
+                log.info("{} 공고 수집 완료", bidType);
+            } catch (Exception e) {
+                log.error("{} 공고 수집 실패", bidType, e);
+            }
         }
 
         return totalResult;
