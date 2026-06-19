@@ -225,9 +225,11 @@ POST /api/users/signup
 POST /api/users/login
 POST /api/users/reissue
 
-[2차 MVP 예정]
-GET  /api/alerts                       알림 내역
-POST /api/settings/alerts              알림 설정 저장
+[2차 MVP 진행중]
+GET  /api/notification-settings/me     알림 설정 조회 (완료)
+PUT  /api/notification-settings/me     알림 설정 수정 (완료)
+POST /api/notices/sync                 나라장터 공고 수동 동기화, 관리자용 (완료)
+GET  /api/notification-logs            알림 발송 이력 조회 (예정)
 
 [3차 MVP 예정]
 GET    /api/checklist/{noticeId}
@@ -327,12 +329,15 @@ LocalDateTime weeklyEnd = todayStart.plusDays(8).minusNanos(1);   // D-7 끝
 ✅ 비로그인 사용자 공고 조회 허용
 ✅ 비활성 기능(알림/체크리스트) 사이드바 완전 제거, 도움말에 로드맵 안내
 
-[2차 MVP 예정 — 마감 임박 알림]
-⬜ 이메일 알림 (스케줄러: D-3, D-1 발송)
-⬜ 알림 설정 UI (마이페이지 내)
-⬜ 알림 내역 페이지 (/alerts)
-⬜ 사이드바에 "알림 내역" 메뉴 추가
-⬜ 나의 현황에 "읽지 않은 알림" 카운트 추가
+[2차 MVP 진행중 — 마감 임박 알림]
+✅ 나라장터 공고 자동 수집 스케줄러 (매시간, 오늘 00시~현재 범위 동기화)
+✅ 알림 설정 API (조회/수정, notification_settings 테이블)
+⬜ 알림 발송 이력 테이블 (notification_logs)
+⬜ 이메일 알림 발송 스케줄러 (D-3, D-1)
+⬜ 알림 설정 UI (마이페이지 내) — 프론트
+⬜ 알림 내역 페이지 (/alerts) — 프론트
+⬜ 사이드바에 "알림 내역" 메뉴 추가 — 프론트
+⬜ 나의 현황에 "읽지 않은 알림" 카운트 추가 — 프론트
 ⬜ (이후) 카카오 알림톡 채널 추가
 
 [3차 MVP 예정 — 서류 체크리스트]
@@ -363,13 +368,16 @@ LocalDateTime weeklyEnd = todayStart.plusDays(8).minusNanos(1);   // D-7 끝
 - 발송 이력 저장 (중복 발송 방지)
 
 [DB 추가]
-- alert_logs 테이블 (userId, noticeId, sentAt, channel)
-- user_alert_settings 테이블 (userId, emailEnabled, kakaoEnabled, daysBeforeList)
+- notification_settings 테이블 (userId, emailNotificationEnabled, d3Enabled, d1Enabled) — 완료
+- notification_logs 테이블 (userId, noticeId, alertType, channel, status, isRead, sentAt) — 예정
 
 [API 추가]
-GET  /api/alerts                알림 내역 조회
-POST /api/settings/alerts       알림 설정 저장
+GET  /api/notification-settings/me      알림 설정 조회 (완료)
+PUT  /api/notification-settings/me      알림 설정 수정 (완료)
+GET  /api/notification-logs             알림 내역 조회 — 예정
 ```
+
+> 패키지/클래스 네이밍은 `alert`가 아니라 `notification`으로 통일 (예: `NotificationSetting`, `NotificationLog`).
 
 ### 프론트엔드 예상 작업
 
