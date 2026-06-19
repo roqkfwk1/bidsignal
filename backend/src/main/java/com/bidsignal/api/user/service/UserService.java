@@ -4,6 +4,8 @@ import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.global.security.jwt.JwtProvider;
 import com.bidsignal.api.global.security.jwt.RefreshTokenService;
+import com.bidsignal.api.notification.domain.NotificationSetting;
+import com.bidsignal.api.notification.repository.NotificationSettingRepository;
 import com.bidsignal.api.user.domain.User;
 import com.bidsignal.api.user.dto.request.UserLoginRequest;
 import com.bidsignal.api.user.dto.request.UserSignupRequest;
@@ -24,6 +26,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
+    private final NotificationSettingRepository notificationSettingRepository;
 
     // 회원가입
     @Transactional
@@ -43,6 +46,9 @@ public class UserService {
         );
 
         User savedUser = userRepository.save(user);
+
+        NotificationSetting setting = NotificationSetting.createDefault(savedUser);
+        notificationSettingRepository.save(setting);
 
         return UserResponse.from(savedUser);
     }
