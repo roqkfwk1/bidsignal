@@ -49,4 +49,7 @@ public interface NotificationHistoryRepository extends JpaRepository<Notificatio
     @Modifying
     @Query("UPDATE NotificationHistory h SET h.isRead = true WHERE h.user.id = :userId AND h.success = true AND h.isRead = false")
     int markAllAsReadByUserId(@Param("userId") Long userId);
+
+    // 관심공고의 연관 알림 이력 삭제
+    void deleteByWatchlistItem(WatchlistItem watchlistItem);
 }

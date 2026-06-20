@@ -4,6 +4,7 @@ import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.notice.repository.NoticeRepository;
+import com.bidsignal.api.notification.repository.NotificationHistoryRepository;
 import com.bidsignal.api.user.domain.User;
 import com.bidsignal.api.user.repository.UserRepository;
 import com.bidsignal.api.watchlist.domain.WatchlistItem;
@@ -26,6 +27,7 @@ public class WatchlistService {
     private final WatchlistItemRepository watchlistItemRepository;
     private final NoticeRepository noticeRepository;
     private final UserRepository userRepository;
+    private final NotificationHistoryRepository notificationHistoryRepository;
 
     // 관심 공고 목록 조회
     public List<WatchlistListResponse> getWatchlist(Long userId) {
@@ -63,11 +65,11 @@ public class WatchlistService {
     @Transactional
     public void deleteWatchlist(Long userId, Long noticeId) {
 
-        WatchlistItem watchlistItem = watchlistItemRepository
-                .findByUserIdAndNoticeIdWithNotice(userId, noticeId)
+        WatchlistItem item = watchlistItemRepository.findByUserIdAndNoticeIdWithNotice(userId, noticeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.WATCHLIST_ITEM_NOT_FOUND));
 
-        watchlistItemRepository.delete(watchlistItem);
+        notificationHistoryRepository.deleteByWatchlistItem(item);
+        watchlistItemRepository.delete(item);
     }
 
     // 관심 공고 상태 변경

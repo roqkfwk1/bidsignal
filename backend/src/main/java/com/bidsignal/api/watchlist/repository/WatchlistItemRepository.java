@@ -21,9 +21,6 @@ public interface WatchlistItemRepository extends JpaRepository<WatchlistItem, Lo
     // 중복 저장 방지
     boolean existsByUserIdAndNoticeId(Long userId, Long noticeId);
 
-    // 사용자 ID로 조회 (사용자 본인 소유 검증)
-    Optional<WatchlistItem> findByIdAndUserId(Long id, Long userId);
-
     // 사용자 + 공고로 단건 조회
     @Query("SELECT w FROM WatchlistItem w JOIN FETCH w.notice WHERE w.user.id = :userId AND w.notice.id = :noticeId")
     Optional<WatchlistItem> findByUserIdAndNoticeIdWithNotice(@Param("userId") Long userId, @Param("noticeId") Long noticeId);
