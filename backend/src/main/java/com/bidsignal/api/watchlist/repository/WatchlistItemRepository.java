@@ -34,4 +34,27 @@ public interface WatchlistItemRepository extends JpaRepository<WatchlistItem, Lo
 
     // 상태별 건수
     long countByUserIdAndStatus(Long userId, WatchlistStatus status);
+
+    // 마감 임박 알림 대상 조회
+    @Query("""
+        SELECT w
+        FROM WatchlistItem w
+        JOIN FETCH w.user u
+        JOIN FETCH w.notice n
+        JOIN NotificationSetting ns ON ns.user = u
+        WHERE n.bidClseDt >= :start
+          AND n.bidClseDt < :end
+          AND w.status IN :statuses
+          AND ns.emailNotificationEnabled = true
+          AND (
+                (:remainingDays = 3 AND ns.d3Enabled = true)
+             OR (:remainingDays = 1 AND ns.d1Enabled = true)
+          )
+        """)
+    List<WatchlistItem> findDeadlineNotificationTargets(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("statuses") List<WatchlistStatus> statuses,
+            @Param("remainingDays") int remainingDays
+    );
 }
