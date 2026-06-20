@@ -46,4 +46,13 @@ public class NotificationHistoryController {
 
         return ResponseEntity.ok(ApiResponse.success(count));
     }
+
+    // 안 읽은 알림 전체 읽음 처리
+    @PatchMapping("/read-all")
+    public ResponseEntity<ApiResponse<Integer>> markAllAsRead(@AuthenticationPrincipal Long userId) {
+
+        int count = notificationHistoryService.markAllAsRead(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(count));
+    }
 }

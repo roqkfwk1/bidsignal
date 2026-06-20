@@ -64,4 +64,13 @@ public class NotificationHistoryService {
 
         return notificationHistoryRepository.countByUserIdAndSuccessTrueAndIsReadFalse(user.getId());
     }
+
+    /**
+     * 안 읽은 알림 전체를 읽음 처리 한다.
+     */
+    @Transactional
+    public int markAllAsRead(Long userId) {
+
+        return notificationHistoryRepository.markAllAsReadByUserId(userId);
+    }
 }

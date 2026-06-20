@@ -6,6 +6,7 @@ import com.bidsignal.api.watchlist.domain.WatchlistItem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -43,4 +44,9 @@ public interface NotificationHistoryRepository extends JpaRepository<Notificatio
 
     // 안 읽은 알림 개수 조회
     long countByUserIdAndSuccessTrueAndIsReadFalse(Long userId);
+
+    // 안 읽은 알림 전체 읽음 처리
+    @Modifying
+    @Query("UPDATE NotificationHistory h SET h.isRead = true WHERE h.user.id = :userId AND h.success = true AND h.isRead = false")
+    int markAllAsReadByUserId(@Param("userId") Long userId);
 }
