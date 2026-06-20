@@ -19,6 +19,7 @@ export interface NoticeListItem {
   bidType: 'GOODS' | 'SERVICE' | 'CONSTRUCTION' | 'FOREIGN' | 'ETC';
   ntceKindNm: string;
   prtcptLmtRgnNm: string;
+  bidNtceDt?: string;
   bidClseDt: string;
   bdgtAmt: number;
   bidNtceDtlUrl: string;
@@ -148,6 +149,24 @@ export interface SearchCondition {
 }
 
 export type WatchlistStatus = 'REVIEWING' | 'PREPARING' | 'SUBMITTED' | 'DROPPED';
+
+// ── 알림 내역 ─────────────────────────────────────────────────────────
+export interface NotificationHistory {
+  id: number;
+  noticeId: number;
+  noticeTitle: string;
+  remainingDays: number;  // 3 또는 1 (D-3 / D-1)
+  channel: string;
+  read: boolean;          // boolean isRead → Lombok isRead() → Jackson "read"
+  sentAt: string;
+}
+
+// ── 알림 설정 ─────────────────────────────────────────────────────────
+export interface NotificationSettings {
+  emailNotificationEnabled: boolean;
+  d3Enabled: boolean;
+  d1Enabled: boolean;
+}
 
 export const WATCHLIST_STATUS_LABEL: Record<WatchlistStatus, string> = {
   REVIEWING: '검토중',

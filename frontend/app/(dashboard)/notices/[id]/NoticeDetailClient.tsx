@@ -250,6 +250,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
               <InfoItem label="공고번호"  value={notice.bidNtceNo} />
               <InfoItem label="공고기관"  value={notice.ntceInsttNm} />
               <InfoItem label="수요기관"  value={notice.dminsttNm || '-'} />
+              <InfoItem label="게시일"    value={notice.bidNtceDt ? formatIsoDate(notice.bidNtceDt) : '-'} />
               <InfoItem label="입찰방식"  value={notice.bidMethdNm || '-'} />
               <InfoItem label="예산금액"  value={amount} />
               <InfoItem label="공고 유형" value={bidType} />

@@ -93,6 +93,7 @@ function SkeletonRows() {
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-52 mb-1.5" /><Skeleton className="h-3 w-28" /></td>
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-14" /></td>
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-28" /></td>
+          <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-24" /></td>
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-14 mb-1.5" /><Skeleton className="h-3 w-20" /></td>
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-24" /></td>
           <td className="px-5 py-4 align-middle text-center"><Skeleton className="h-5 w-5 mx-auto rounded" /></td>
@@ -599,9 +600,10 @@ export default function NoticesPage() {
                   <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                     <th className="text-left px-5 py-3 font-medium">공고명</th>
                     <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-20">참가지역</th>
-                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-60">수요기관</th>
+                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-52">수요기관</th>
+                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">게시일</th>
                     <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">마감일</th>
-                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-32">금액</th>
+                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">금액</th>
                     <th className="text-center px-5 py-3 font-medium whitespace-nowrap w-14">★</th>
                   </tr>
                 </thead>
@@ -634,9 +636,10 @@ export default function NoticesPage() {
                     <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                       <th className="text-left px-5 py-3 font-medium">공고명</th>
                       <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-20">참가지역</th>
-                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-60">수요기관</th>
+                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-52">수요기관</th>
+                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">게시일</th>
                       <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">마감일</th>
-                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-32">금액</th>
+                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">금액</th>
                       <th className="text-center px-5 py-3 font-medium whitespace-nowrap w-14">★</th>
                     </tr>
                   </thead>
@@ -674,6 +677,10 @@ export default function NoticesPage() {
                             <span className="block truncate" title={notice.dminsttNm || notice.ntceInsttNm}>
                               {notice.dminsttNm || notice.ntceInsttNm}
                             </span>
+                          </td>
+
+                          <td className="px-5 py-4 align-middle text-gray-600 whitespace-nowrap text-sm">
+                            {notice.bidNtceDt ? formatIsoDate(notice.bidNtceDt) : '-'}
                           </td>
 
                           <td className="px-5 py-4 align-middle whitespace-nowrap">

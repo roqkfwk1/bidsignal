@@ -8,6 +8,7 @@ import {
   Lock,
   LogOut,
   ChevronRight,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,9 +23,9 @@ export default function MyPage() {
   useRequireAuth();
   const router = useRouter();
 
-  const [user, setUser]                   = useState<UserResponse | null>(null);
+  const [user, setUser]                     = useState<UserResponse | null>(null);
   const [watchlistCount, setWatchlistCount] = useState(0);
-  const [loading, setLoading]             = useState(true);
+  const [loading, setLoading]               = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -109,6 +110,14 @@ export default function MyPage() {
             label="관심 조건 설정"
             subtitle="공고 찾기 기본 필터로 적용돼요"
             onClick={() => router.push('/settings/conditions')}
+            right={<ChevronRight className="size-5 text-gray-400" />}
+          />
+
+          <MenuRow
+            icon={<Bell className="size-5" />}
+            label="알림 설정"
+            subtitle="마감 임박 공고 이메일 알림을 설정해요"
+            onClick={() => router.push('/mypage/notifications')}
             right={<ChevronRight className="size-5 text-gray-400" />}
           />
 
@@ -204,3 +213,4 @@ function MenuRow({
     </div>
   );
 }
+

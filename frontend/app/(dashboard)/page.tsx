@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bookmark, ClipboardList, Inbox } from 'lucide-react';
+import { Bookmark, ClipboardList, Inbox, Bell } from 'lucide-react';
 
 import { TodayTodoCard } from '@/components/dashboard/TodayTodoCard';
 import { DDayBadge } from '@/components/common/DDayBadge';
@@ -11,16 +11,18 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getDashboardSummary } from '@/lib/api/dashboard';
 import { getWatchlist } from '@/lib/api/watchlist';
+import { getUnreadCount } from '@/lib/api/notifications';
 import { ACCESS_TOKEN_KEY } from '@/lib/api';
 import { formatIsoDate } from '@/lib/utils';
 import type { DashboardSummary, WatchlistItem } from '@/types/notice';
 
 export default function HomePage() {
   const router = useRouter();
-  const [summary, setSummary]             = useState<DashboardSummary>({ urgentCount: 0, preparingCount: 0, weeklyCount: 0 });
-  const [recentNotices, setRecentNotices] = useState<WatchlistItem[]>([]);
+  const [summary, setSummary]               = useState<DashboardSummary>({ urgentCount: 0, preparingCount: 0, weeklyCount: 0 });
+  const [recentNotices, setRecentNotices]   = useState<WatchlistItem[]>([]);
   const [watchlistTotal, setWatchlistTotal] = useState(0);
-  const [loading, setLoading]             = useState(true);
+  const [unreadCount, setUnreadCount]       = useState(0);
+  const [loading, setLoading]               = useState(true);
 
   useEffect(() => {
     /* 비로그인 → 공개 페이지(공고 찾기)로 이동. 홈 대시보드는 로그인 전용. */
@@ -31,16 +33,18 @@ export default function HomePage() {
 
     async function load() {
       try {
-        const [summaryData, watchlistData] = await Promise.allSettled([
+        const [summaryData, watchlistData, unreadData] = await Promise.allSettled([
           getDashboardSummary(),
           getWatchlist(),
+          getUnreadCount(),
         ]);
 
-        if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
+        if (summaryData.status === 'fulfilled')  setSummary(summaryData.value);
         if (watchlistData.status === 'fulfilled') {
           setWatchlistTotal(watchlistData.value.length);
           setRecentNotices(watchlistData.value.slice(0, 3));
         }
+        if (unreadData.status === 'fulfilled') setUnreadCount(unreadData.value);
       } finally {
         setLoading(false);
       }
@@ -64,6 +68,14 @@ export default function HomePage() {
       href: '/watchlist?status=preparing',
       iconBg: 'bg-green-50',
       iconColor: 'text-green-600',
+    },
+    {
+      Icon: Bell,
+      label: '읽지 않은 알림',
+      count: unreadCount,
+      href: '/alerts',
+      iconBg: 'bg-orange-50',
+      iconColor: 'text-orange-600',
     },
   ];
 

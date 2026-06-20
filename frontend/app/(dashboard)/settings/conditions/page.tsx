@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -13,7 +15,8 @@ import {
 } from '@/components/ui/select';
 import { bidTypeToKorean, REGIONS } from '@/lib/utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import type { SearchCondition } from '@/types/notice';
+import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notifications';
+import type { SearchCondition, NotificationSettings } from '@/types/notice';
 
 /* ── 상수 ── */
 const BID_TYPES = [
@@ -74,10 +77,16 @@ export default function ConditionsPage() {
     }
   });
 
-  const [showToast, setShowToast]     = useState(false);
+  const [notifSettings, setNotifSettings]       = useState<NotificationSettings | null>(null);
+  const [notifLoading, setNotifLoading]         = useState(true);
+  const [showToast, setShowToast]               = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    getNotificationSettings()
+      .then(setNotifSettings)
+      .catch(() => {})
+      .finally(() => setNotifLoading(false));
     return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
   }, []);
 
@@ -95,6 +104,18 @@ export default function ConditionsPage() {
         ? c.bidTypes.filter((t) => t !== code)
         : [...c.bidTypes, code],
     }));
+  }
+
+  async function handleAlertToggle(value: boolean) {
+    if (!notifSettings) return;
+    const prev = notifSettings;
+    const updated = { ...notifSettings, emailNotificationEnabled: value };
+    setNotifSettings(updated);
+    try {
+      await updateNotificationSettings(updated);
+    } catch {
+      setNotifSettings(prev);
+    }
   }
 
   return (
@@ -160,7 +181,6 @@ export default function ConditionsPage() {
               쉼표로 구분하여 여러 키워드를 입력할 수 있어요.
             </p>
           </FormField>
-
         </div>
 
         {/* 섹션 3: 저장 버튼 */}
@@ -171,6 +191,26 @@ export default function ConditionsPage() {
           >
             설정 저장
           </Button>
+        </div>
+
+        {/* 섹션 4: 마감 임박 알림 설정 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-base font-semibold text-gray-800">마감 임박 알림 받기</p>
+              <p className="text-sm text-gray-500 mt-1">
+                관심 공고 마감 임박 시 이메일로 알림을 받아요. (마이페이지에서 세부 설정 가능)
+              </p>
+            </div>
+            {notifLoading ? (
+              <Skeleton className="h-5 w-10 flex-shrink-0" />
+            ) : (
+              <Switch
+                checked={notifSettings?.emailNotificationEnabled ?? false}
+                onCheckedChange={handleAlertToggle}
+              />
+            )}
+          </div>
         </div>
       </div>
 
