@@ -7,11 +7,15 @@ import { Button } from '@/components/ui/button';
 import { ACCESS_TOKEN_KEY } from '@/lib/api';
 
 export function Header() {
-  const [isLoggedIn] = useState(
-    () => typeof window !== 'undefined' && !!localStorage.getItem(ACCESS_TOKEN_KEY)
-  );
+  const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem(ACCESS_TOKEN_KEY));
+    setMounted(true);
+  }, []);
 
   function handleBellClick() {
     setShowNotice(true);
@@ -47,8 +51,8 @@ export function Header() {
         )}
       </div>
 
-      {/* 로그인 상태에 따라 다르게 표시 */}
-      {isLoggedIn ? (
+      {/* 로그인 상태에 따라 다르게 표시 — mounted 전에는 서버 렌더링과 동일하게 로그아웃 상태 유지 */}
+      {mounted && isLoggedIn ? (
         <Button variant="ghost" size="icon" asChild aria-label="마이페이지">
           <Link href="/mypage">
             <User className="size-5 text-gray-400" />
