@@ -25,6 +25,9 @@ public enum ErrorCode {
     // NotificationSetting
     NOTIFICATION_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "알림 설정을 찾을 수 없습니다."),
 
+    // NotificationHistory
+    NOTIFICATION_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "알림 이력을 찾을 수 없습니다."),
+
     // Token
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."),
 

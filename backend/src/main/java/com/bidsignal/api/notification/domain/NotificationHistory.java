@@ -39,6 +39,9 @@ public class NotificationHistory extends BaseEntity {
     @Column(length = 500)
     private String errorMessage;
 
+    @Column(nullable = false)
+    private boolean isRead;
+
     // 성공 이력 생성
     public static NotificationHistory createSuccess(User user, WatchlistItem watchlistItem, NotificationChannel channel, int remainingDays) {
         NotificationHistory history = new NotificationHistory();
@@ -64,5 +67,10 @@ public class NotificationHistory extends BaseEntity {
         history.errorMessage = errorMessage;
 
         return history;
+    }
+
+    // 읽음 처리
+    public void markAsRead() {
+        this.isRead = true;
     }
 }
