@@ -44,13 +44,13 @@ BidSignal은 **"입찰 업무 자체를 관리해주는 SaaS"** 로 포지셔닝
 
 ## 3. MVP 단계 정의
 
-> **현재 상태: 1차 MVP 완료 ✅**
-> 2차 MVP 구현 시작 예정
+> **현재 상태: 2차 MVP 완료 ✅**
+> 3차 MVP 구현 시작 예정
 
 | 단계 | 핵심 기능 | 사업적 의미 |
 |------|-----------|------------|
 | **1차 MVP** ✅ | 나라장터 공고 검색 + 관심 공고 저장 + 마감 대시보드 | 사용자 유입 |
-| **2차 MVP** | 마감 임박 이메일 알림 → 이후 카카오 알림톡 추가 | 리텐션 확보 |
+| **2차 MVP** ✅ | 마감 임박 이메일 알림 → 이후 카카오 알림톡 추가 | 리텐션 확보 |
 | **3차 MVP** | 입찰 서류 체크리스트 + 진행률 관리 | 이탈 방지, 도구화 |
 | **4차 MVP** | AI 공고 추천 (실적/역량 기반) | 핵심 차별점 |
 | **5차 MVP** | 팀 공유 + 유료화 | 수익화 |
@@ -233,10 +233,10 @@ PATCH /api/notification-histories/{id}/read      알림 읽음 처리 (완료)
 GET   /api/notification-histories/unread-count   안 읽은 알림 개수 (완료)
 POST  /api/notices/sync                          나라장터 공고 수동 동기화, 관리자용 (완료)
 
-[3차 MVP 예정]
-GET    /api/checklist/{noticeId}
-POST   /api/checklist/{noticeId}/items
-PATCH  /api/checklist/{noticeId}/items/{itemId}
+[3차 MVP 예정 — 체크리스트]
+GET    /api/watchlist/{noticeId}/checklist              체크리스트 조회 (진행률 포함)
+POST   /api/watchlist/{noticeId}/checklist/items         체크리스트 항목 추가
+PATCH  /api/watchlist/{noticeId}/checklist/items/{itemId} 체크/해제
 ```
 
 ---
@@ -331,24 +331,26 @@ LocalDateTime weeklyEnd = todayStart.plusDays(8).minusNanos(1);   // D-7 끝
 ✅ 비로그인 사용자 공고 조회 허용
 ✅ 비활성 기능(알림/체크리스트) 사이드바 완전 제거, 도움말에 로드맵 안내
 
-[2차 MVP 진행중 — 마감 임박 알림]
-✅ 나라장터 공고 자동 수집 스케줄러 (매시간, 오늘 00시~현재 범위 동기화)
-✅ 알림 설정 API (조회/수정, notification_settings 테이블)
-✅ 알림 발송 이력 테이블 (notification_histories)
-✅ 알림 내역 조회 API (페이지네이션, notification_histories)
-✅ 알림 읽음 처리 API
-✅ 안 읽은 알림 개수 API
+[2차 MVP 완료 — 마감 임박 알림]
+✅ 나라장터 공고 자동 수집 스케줄러
+✅ 알림 설정 API (조회/수정)
+✅ 알림 발송 이력 테이블
 ✅ 이메일 알림 발송 스케줄러 (D-3, D-1)
-⬜ 알림 설정 UI (마이페이지 내) — 프론트
-⬜ 알림 내역 페이지 (/alerts) — 프론트
-⬜ 사이드바에 "알림 내역" 메뉴 추가 — 프론트
-⬜ 나의 현황에 "읽지 않은 알림" 카운트 추가 — 프론트
+✅ 알림 설정 UI (마이페이지, 채널/시점 그룹 분리)
+✅ 알림 내역 페이지 (/alerts, 읽음 처리·전체 읽음)
+✅ 사이드바 "알림 내역" 메뉴
+✅ 나의 현황 "읽지 않은 알림" 카운트
 ⬜ (이후) 카카오 알림톡 채널 추가
 
 [3차 MVP 예정 — 서류 체크리스트]
-⬜ 공고별 체크리스트 + 진행률 관리
-⬜ 체크리스트 페이지 (/checklist)
-⬜ 사이드바에 "체크리스트" 메뉴 추가
+⬜ ChecklistItem 엔티티 (WatchlistItem 1:N)
+⬜ 관심공고 등록 시 기본 체크리스트 항목 자동 생성
+⬜ 체크리스트 조회 API (진행률 계산 포함, DB 저장 안 함)
+⬜ 체크리스트 항목 추가 API
+⬜ 체크리스트 항목 체크/해제 API
+⬜ 체크리스트 페이지 (/checklist 또는 공고 상세 내 탭)
+⬜ 사이드바 "체크리스트" 메뉴 추가
+> 2단계(항목 삭제/수정/정렬), 3단계(진행률 대시보드/알림 노출)는 1단계 완료 후 별도 진행
 
 [4차 MVP 예정 — AI 공고 추천]
 ⬜ 실적/역량 기반 수주 가능성 높은 공고 자동 추천
@@ -414,13 +416,30 @@ NotificationService        // 채널 무관한 핵심 로직 (대상 조회, 이
 ## 14. 도움말 페이지 서비스 안내 문구 (확정)
 
 ```
-현재 1차 MVP 서비스 운영 중입니다.
-마감 임박 알림, 입찰 서류 체크리스트 기능은 2차 업데이트에서 순차적으로 제공될 예정입니다.
+현재 1차+2차 MVP 서비스 운영 중입니다.
+관심 공고 마감 임박 시 이메일로 알려드려요. 입찰 서류 체크리스트 기능은 다음 업데이트에서 제공될 예정입니다.
 개선 의견은 이메일로 보내주시면 적극 반영합니다.
 ```
 
 > 이 문구를 임의로 변경하지 말 것.
 > 2차 MVP 완료 후 "알림 기능 출시" 문구로 업데이트할 것.
+
+---
+
+## 16. 3차 MVP 구현 가이드 (체크리스트)
+
+### 설계 원칙
+> 체크리스트는 공고(Notice) 자체의 정보가 아니라, 사용자가 관심 등록한 공고에 대한 개인별 준비 상태다.
+> WatchlistItem 기준으로 설계하고, API 경로는 기존 /api/watchlist/{noticeId}/status, /memo 패턴과 동일하게 noticeId 기준으로 간다.
+
+### DB 추가
+- checklist_items 테이블 (watchlistItemId FK, content, isChecked, createdAt)
+
+### 기본 항목 (관심공고 등록 시 자동 생성)
+사업자등록증 / 입찰참가신청서 / 견적서 또는 가격제안서 / 기술제안서 / 법인등기부등본 / 인감증명서 / 입찰보증 관련 서류
+
+### 주의사항
+> WatchlistItem 삭제 시 연관된 ChecklistItem도 함께 삭제해야 함 (외래키 제약, NotificationHistory와 동일한 패턴).
 
 ---
 
