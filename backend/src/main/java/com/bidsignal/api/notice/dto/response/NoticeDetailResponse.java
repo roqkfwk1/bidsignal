@@ -31,6 +31,11 @@ public class NoticeDetailResponse {
     private Long presmptPrce;
     private String cntrctCnclsMthdNm;
     private String bidMethdNm;
+    private String sucsfbidMthdCd;
+    private String sucsfbidMthdNm;
+    private String sucsfbidMthdAppStd;
+    private String techAbltEvlRt;
+    private String bidPrceEvlRt;
     private String bidNtceDtlUrl;
 
     public static NoticeDetailResponse from(Notice notice) {
@@ -55,6 +60,11 @@ public class NoticeDetailResponse {
                 .presmptPrce(notice.getPresmptPrce())
                 .cntrctCnclsMthdNm(notice.getCntrctCnclsMthdNm())
                 .bidMethdNm(notice.getBidMethdNm())
+                .sucsfbidMthdCd(notice.getSucsfbidMthdCd())
+                .sucsfbidMthdNm(notice.getSucsfbidMthdNm())
+                .sucsfbidMthdAppStd(notice.getSucsfbidMthdAppStd())
+                .techAbltEvlRt(notice.getTechAbltEvlRt())
+                .bidPrceEvlRt(notice.getBidPrceEvlRt())
                 .bidNtceDtlUrl(notice.getBidNtceDtlUrl())
                 .build();
     }

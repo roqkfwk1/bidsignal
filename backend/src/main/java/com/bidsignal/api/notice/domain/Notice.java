@@ -85,6 +85,21 @@ public class Notice extends BaseEntity {
     @Column(length = 500)
     private String bidMethdNm;          // 입찰방식명
 
+    @Column(length = 9)
+    private String sucsfbidMthdCd;      // 낙찰방법코드
+
+    @Column(length = 700)
+    private String sucsfbidMthdNm;      // 낙찰방법명
+
+    @Column(length = 500)
+    private String sucsfbidMthdAppStd;  // 낙찰방법적용기준
+
+    @Column(length = 25)
+    private String techAbltEvlRt;       // 기술능력평가비율
+
+    @Column(length = 25)
+    private String bidPrceEvlRt;        // 입찰가격평가비율
+
     @Column(length = 512)
     private String bidNtceDtlUrl;       // 입찰공고상세URL
 
@@ -109,6 +124,11 @@ public class Notice extends BaseEntity {
             Long presmptPrce,
             String cntrctCnclsMthdNm,
             String bidMethdNm,
+            String sucsfbidMthdCd,
+            String sucsfbidMthdNm,
+            String sucsfbidMthdAppStd,
+            String techAbltEvlRt,
+            String bidPrceEvlRt,
             String bidNtceDtlUrl
     ) {
         this.bidNtceNo = bidNtceNo;
@@ -130,6 +150,11 @@ public class Notice extends BaseEntity {
         this.presmptPrce = presmptPrce;
         this.cntrctCnclsMthdNm = cntrctCnclsMthdNm;
         this.bidMethdNm = bidMethdNm;
+        this.sucsfbidMthdCd = sucsfbidMthdCd;
+        this.sucsfbidMthdNm = sucsfbidMthdNm;
+        this.sucsfbidMthdAppStd = sucsfbidMthdAppStd;
+        this.techAbltEvlRt = techAbltEvlRt;
+        this.bidPrceEvlRt = bidPrceEvlRt;
         this.bidNtceDtlUrl = bidNtceDtlUrl;
     }
 }

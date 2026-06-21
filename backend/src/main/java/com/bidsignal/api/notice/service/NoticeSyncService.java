@@ -175,6 +175,11 @@ public class NoticeSyncService {
                 .presmptPrce(parseLong(item.getPresmptPrce()))
                 .cntrctCnclsMthdNm(item.getCntrctCnclsMthdNm())
                 .bidMethdNm(item.getBidMethdNm())
+                .sucsfbidMthdCd(item.getSucsfbidMthdCd())
+                .sucsfbidMthdNm(item.getSucsfbidMthdNm())
+                .sucsfbidMthdAppStd(item.getSucsfbidMthdAppStd())
+                .techAbltEvlRt(item.getTechAbltEvlRt())
+                .bidPrceEvlRt(item.getBidPrceEvlRt())
                 .bidNtceDtlUrl(item.getBidNtceDtlUrl())
                 .build();
     }

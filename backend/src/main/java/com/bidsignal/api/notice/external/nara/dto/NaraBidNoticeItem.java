@@ -30,6 +30,8 @@ public class NaraBidNoticeItem {
     private String sucsfbidMthdCd;         // 낙찰방법코드
     private String sucsfbidMthdNm;         // 낙찰방법명
     private String sucsfbidMthdAppStd;     // 낙찰방법적용기준
+    private String techAbltEvlRt;          // 기술능력평가비율
+    private String bidPrceEvlRt;           // 입찰가격평가비율
 
     // 입찰 일정 정보
     private String bidNtceDt;              // 입찰공고일시
@@ -110,8 +112,6 @@ public class NaraBidNoticeItem {
     private String ntceSpecFileNm9;        // 공고규격파일명9
     private String ntceSpecFileNm10;       // 공고규격파일명10
 
-    // 기술 및 변경 공고 정보
-    private String techAbltEvlRt;          // 기술능력평가비율
-    private String bidPrceEvlRt;           // 입찰가격평가비율
+    // 변경 공고 정보
     private String chgNtceRsn;             // 변경공고사유
 }

@@ -23,6 +23,7 @@ public class NoticeListResponse {
     private LocalDateTime bidNtceDt;
     private LocalDateTime bidClseDt;
     private Long bdgtAmt;
+    private String sucsfbidMthdNm;
     private String bidNtceDtlUrl;
 
     public static NoticeListResponse from(Notice notice) {
@@ -39,6 +40,7 @@ public class NoticeListResponse {
                 .bidNtceDt(notice.getBidNtceDt())
                 .bidClseDt(notice.getBidClseDt())
                 .bdgtAmt(notice.getBdgtAmt())
+                .sucsfbidMthdNm(notice.getSucsfbidMthdNm())
                 .bidNtceDtlUrl(notice.getBidNtceDtlUrl())
                 .build();
     }
