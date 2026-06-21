@@ -102,6 +102,10 @@ public class UserService {
 
         Long userId = jwtProvider.getUserIdFromToken(refreshToken);
 
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
         String storedRefreshToken = refreshTokenService.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
 
