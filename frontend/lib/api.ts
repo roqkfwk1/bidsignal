@@ -6,6 +6,12 @@ const REFRESH_TOKEN_KEY = 'bidsignal_refresh_token';
 
 export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY };
 
+function forceLogout(): void {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.location.href = '/login';
+}
+
 async function reissueToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -17,6 +23,12 @@ async function reissueToken(): Promise<string | null> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
+    // 401 (유효하지 않은 refreshToken) 또는 404 (사용자 없음) — 두 경우 모두
+    // "이 refreshToken으로는 더 이상 세션을 유지할 수 없다"는 의미이므로 동일하게 처리
+    if (res.status === 401 || res.status === 404) {
+      forceLogout();
+      return null;
+    }
     if (!res.ok) return null;
     const json = await res.json();
     const data = (json.data ?? json) as { accessToken: string; refreshToken?: string };
@@ -72,7 +84,11 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    const errJson = await res.json().catch(() => null) as { message?: string } | null;
+    const errJson = await res.json().catch(() => null) as { code?: string; message?: string } | null;
+    if (errJson?.code === 'USER_NOT_FOUND' && typeof window !== 'undefined') {
+      forceLogout();
+      return new Promise<T>(() => {});
+    }
     throw new Error(errJson?.message ?? `API error: ${res.status}`);
   }
 
