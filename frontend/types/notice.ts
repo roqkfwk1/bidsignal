@@ -23,6 +23,7 @@ export interface NoticeListItem {
   bidClseDt: string;
   bdgtAmt: number;
   bidNtceDtlUrl: string;
+  sucsfbidMthdNm: string | null;
 }
 
 // ── 백엔드 공고 상세 응답 ─────────────────────────────────────────────
@@ -36,6 +37,8 @@ export interface NoticeDetail extends NoticeListItem {
   presmptPrce: number;
   cntrctCnclsMthdNm: string;
   bidMethdNm: string;
+  techAbltEvlRt: number | string | null;
+  bidPrceEvlRt: number | string | null;
 }
 
 // ── 백엔드 관심 공고 응답 ─────────────────────────────────────────────

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Search, Star } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Search, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,6 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DDayBadge } from '@/components/common/DDayBadge';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ApiErrorState } from '@/components/common/ApiErrorState';
@@ -40,6 +41,7 @@ import {
   REGIONS,
 } from '@/lib/utils';
 import type { NoticeListItem, NoticeSearchParams, SearchCondition } from '@/types/notice';
+import { splitSucsfbidMthdNm } from '@/lib/notice';
 
 /* ────────────────────────────────────────────────────────── */
 /* Types                                                       */
@@ -91,12 +93,13 @@ function SkeletonRows() {
       {Array.from({ length: 4 }).map((_, i) => (
         <tr key={i} className="border-t border-gray-100">
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-52 mb-1.5" /><Skeleton className="h-3 w-28" /></td>
-          <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-14" /></td>
+          <td className="px-3 py-4 align-middle"><Skeleton className="h-4 w-10" /></td>
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-28" /></td>
-          <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-24" /></td>
-          <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-14 mb-1.5" /><Skeleton className="h-3 w-20" /></td>
-          <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-24" /></td>
-          <td className="px-5 py-4 align-middle text-center"><Skeleton className="h-5 w-5 mx-auto rounded" /></td>
+          <td className="px-3 py-4 align-middle"><Skeleton className="h-6 w-20 rounded-md" /></td>
+          <td className="px-3 py-4 align-middle"><Skeleton className="h-4 w-16" /></td>
+          <td className="px-3 py-4 align-middle"><Skeleton className="h-4 w-10 mb-1.5" /><Skeleton className="h-3 w-14" /></td>
+          <td className="px-3 py-4 align-middle"><Skeleton className="h-4 w-16" /></td>
+          <td className="px-1 py-4 align-middle text-center"><Skeleton className="h-5 w-5 mx-auto rounded" /></td>
         </tr>
       ))}
     </>
@@ -304,23 +307,25 @@ export default function NoticesPage() {
   const [currentPage, setCurrentPage] = useState(0);
 
   /* UI states */
-  const [bookmarked, setBookmarked]       = useState<Set<number>>(new Set());
-  const [showToast, setShowToast]         = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [savedCondition] = useState<SearchCondition | null>(() => {
-    if (typeof window === 'undefined') return null;
+  const [bookmarked, setBookmarked]             = useState<Set<number>>(new Set());
+  const [showToast, setShowToast]               = useState(false);
+  const [showLoginModal, setShowLoginModal]     = useState(false);
+  const [conditionSidebarOpen, setConditionSidebarOpen] = useState(true);
+  const [savedCondition, setSavedCondition] = useState<SearchCondition | null>(null);
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return null;
+      if (!raw) return;
       const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return {
+      setSavedCondition({
         region:   typeof parsed.region === 'string' ? parsed.region : '',
         bidTypes: Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
         keywords: typeof parsed.keywords === 'string' ? parsed.keywords : '',
         urgentAlertEnabled: Boolean(parsed.urgentAlertEnabled),
-      };
-    } catch { return null; }
-  });
+      });
+    } catch { /* ignore */ }
+  }, []);
 
   /* 로그인 상태일 때만 관심 공고 목록 로드 (비로그인이면 watchlist API → 401 → 전체 login redirect 방지) */
   useEffect(() => {
@@ -596,15 +601,26 @@ export default function NoticesPage() {
           {phase === 'loading' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <table className="w-full text-base table-fixed">
+                <colgroup>
+                  <col />
+                  <col style={{ width: '64px' }} />
+                  <col style={{ width: '200px' }} />
+                  <col style={{ width: '175px' }} />
+                  <col style={{ width: '96px' }} />
+                  <col style={{ width: '88px' }} />
+                  <col style={{ width: '96px' }} />
+                  <col style={{ width: '32px' }} />
+                </colgroup>
                 <thead>
                   <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                     <th className="text-left px-5 py-3 font-medium">공고명</th>
-                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-20">참가지역</th>
-                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-52">수요기관</th>
-                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">게시일</th>
-                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">마감일</th>
-                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">금액</th>
-                    <th className="text-center px-5 py-3 font-medium whitespace-nowrap w-14">★</th>
+                    <th className="text-left px-3 py-3 font-medium whitespace-nowrap">참가지역</th>
+                    <th className="text-left px-5 py-3 font-medium whitespace-nowrap">수요기관</th>
+                    <th className="text-left px-3 py-3 font-medium whitespace-nowrap">낙찰방법</th>
+                    <th className="text-left px-3 py-3 font-medium whitespace-nowrap">게시일</th>
+                    <th className="text-left px-3 py-3 font-medium whitespace-nowrap">마감일</th>
+                    <th className="text-left px-3 py-3 font-medium whitespace-nowrap">금액</th>
+                    <th className="text-center px-1 py-3 font-medium whitespace-nowrap">★</th>
                   </tr>
                 </thead>
                 <tbody><SkeletonRows /></tbody>
@@ -632,15 +648,26 @@ export default function NoticesPage() {
               <>
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <table className="w-full text-base table-fixed">
+                  <colgroup>
+                    <col />
+                    <col style={{ width: '64px' }} />
+                    <col style={{ width: '200px' }} />
+                    <col style={{ width: '175px' }} />
+                    <col style={{ width: '96px' }} />
+                    <col style={{ width: '88px' }} />
+                    <col style={{ width: '96px' }} />
+                    <col style={{ width: '32px' }} />
+                  </colgroup>
                   <thead>
                     <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                       <th className="text-left px-5 py-3 font-medium">공고명</th>
-                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-20">참가지역</th>
-                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-52">수요기관</th>
-                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">게시일</th>
-                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">마감일</th>
-                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap w-28">금액</th>
-                      <th className="text-center px-5 py-3 font-medium whitespace-nowrap w-14">★</th>
+                      <th className="text-left px-3 py-3 font-medium whitespace-nowrap">참가지역</th>
+                      <th className="text-left px-5 py-3 font-medium whitespace-nowrap">수요기관</th>
+                      <th className="text-left px-3 py-3 font-medium whitespace-nowrap">낙찰방법</th>
+                      <th className="text-left px-3 py-3 font-medium whitespace-nowrap">게시일</th>
+                      <th className="text-left px-3 py-3 font-medium whitespace-nowrap">마감일</th>
+                      <th className="text-left px-3 py-3 font-medium whitespace-nowrap">금액</th>
+                      <th className="text-center px-1 py-3 font-medium whitespace-nowrap">★</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -664,12 +691,14 @@ export default function NoticesPage() {
                               {notice.bidNtceNm}
                             </Link>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-xs text-gray-400 shrink-0">{notice.bidNtceNo}</span>
+                              <span className="text-xs text-gray-400 shrink-0">
+                                {notice.bidNtceOrd ? `${notice.bidNtceNo}-${notice.bidNtceOrd}` : notice.bidNtceNo}
+                              </span>
                               <BidTypeBadge type={notice.bidType} />
                             </div>
                           </td>
 
-                          <td className="px-5 py-4 align-middle text-sm text-gray-500 whitespace-nowrap">
+                          <td className="px-3 py-4 align-middle text-sm text-gray-400 whitespace-nowrap">
                             {formatRegion(notice.prtcptLmtRgnNm)}
                           </td>
 
@@ -679,18 +708,35 @@ export default function NoticesPage() {
                             </span>
                           </td>
 
-                          <td className="px-5 py-4 align-middle text-gray-600 whitespace-nowrap text-sm">
+                          <td className="px-3 py-4 align-middle overflow-hidden">
+                            {notice.sucsfbidMthdNm ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block max-w-full truncate px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-base cursor-default">
+                                    {splitSucsfbidMthdNm(notice.sucsfbidMthdNm).primary}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                  {notice.sucsfbidMthdNm}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-gray-400 text-base">-</span>
+                            )}
+                          </td>
+
+                          <td className="px-3 py-4 align-middle text-gray-600 whitespace-nowrap text-sm">
                             {notice.bidNtceDt ? formatIsoDate(notice.bidNtceDt) : '-'}
                           </td>
 
-                          <td className="px-5 py-4 align-middle whitespace-nowrap">
+                          <td className="px-3 py-4 align-middle whitespace-nowrap">
                             <DDayBadge dDay={dDay} deadline={deadline} />
                             <p className="text-xs text-gray-400 mt-0.5">{deadline}</p>
                           </td>
 
-                          <td className="px-5 py-4 align-middle text-gray-600 whitespace-nowrap">{amount}</td>
+                          <td className="px-3 py-4 align-middle text-gray-600 whitespace-nowrap">{amount}</td>
 
-                          <td className="px-5 py-4 align-middle text-center">
+                          <td className="px-1 py-4 align-middle text-center">
                             <button
                               onClick={() => toggleBookmark(notice)}
                               title={isSaved ? '관심 공고 해제' : '관심 공고에 추가'}
@@ -724,64 +770,87 @@ export default function NoticesPage() {
       </div>
 
       {/* ── 오른쪽 보조 패널 ── */}
-      <div className="w-72 flex-shrink-0 flex flex-col gap-4">
-        {/* 패널 1: 관심 조건 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-semibold text-gray-900 text-base">관심 조건</h3>
-            <Link
-              href="/settings/conditions"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              설정
-            </Link>
+      {conditionSidebarOpen ? (
+        <div className="w-72 flex-shrink-0 flex flex-col gap-4">
+          {/* 패널 1: 관심 조건 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold text-gray-900 text-base">관심 조건</h3>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/settings/conditions"
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  설정
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setConditionSidebarOpen(false)}
+                  aria-label="관심 조건 접기"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+
+            {savedCondition ? (
+              <div className="flex flex-col gap-2">
+                {savedCondition.region && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">지역</p>
+                    <p className="text-sm text-gray-700 mt-0.5">{savedCondition.region}</p>
+                  </div>
+                )}
+                {savedCondition.bidTypes.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">공고 유형</p>
+                    <p className="text-sm text-gray-700 mt-0.5">
+                      {savedCondition.bidTypes.map(bidTypeToKorean).join(', ')}
+                    </p>
+                  </div>
+                )}
+                {savedCondition.keywords && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">키워드</p>
+                    <p className="text-sm text-gray-700 mt-0.5 break-all">{savedCondition.keywords}</p>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                  onClick={applyCondition}
+                >
+                  저장한 조건 적용
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-2">
+                <p className="text-sm text-gray-400 mb-2">저장된 조건이 없어요</p>
+                <Link
+                  href="/settings/conditions"
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  관심 조건 설정하기 →
+                </Link>
+              </div>
+            )}
           </div>
-
-          {savedCondition ? (
-            <div className="flex flex-col gap-2">
-              {savedCondition.region && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">지역</p>
-                  <p className="text-sm text-gray-700 mt-0.5">{savedCondition.region}</p>
-                </div>
-              )}
-              {savedCondition.bidTypes.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">공고 유형</p>
-                  <p className="text-sm text-gray-700 mt-0.5">
-                    {savedCondition.bidTypes.map(bidTypeToKorean).join(', ')}
-                  </p>
-                </div>
-              )}
-              {savedCondition.keywords && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">키워드</p>
-                  <p className="text-sm text-gray-700 mt-0.5 break-all">{savedCondition.keywords}</p>
-                </div>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-1 text-blue-600 border-blue-200 hover:bg-blue-50"
-                onClick={applyCondition}
-              >
-                저장한 조건 적용
-              </Button>
-            </div>
-          ) : (
-            <div className="text-center py-2">
-              <p className="text-sm text-gray-400 mb-2">저장된 조건이 없어요</p>
-              <Link
-                href="/settings/conditions"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                관심 조건 설정하기 →
-              </Link>
-            </div>
-          )}
         </div>
-
-      </div>
+      ) : (
+        <div className="flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setConditionSidebarOpen(true)}
+            aria-label="관심 조건 펼치기"
+            title="관심 조건 펼치기"
+            className="h-10 w-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+        </div>
+      )}
 
       {/* 저장 완료 토스트 */}
       <SaveToast show={showToast} onHide={() => setShowToast(false)} />

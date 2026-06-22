@@ -37,6 +37,7 @@ import {
   bidTypeToKorean,
 } from '@/lib/utils';
 import type { NoticeDetail, WatchlistStatus } from '@/types/notice';
+import { splitSucsfbidMthdNm } from '@/lib/notice';
 
 interface Props {
   noticeId: number;
@@ -187,6 +188,8 @@ export function NoticeDetailClient({ noticeId }: Props) {
   const deadline = formatIsoDate(notice.bidClseDt);
   const amount   = formatWon(notice.presmptPrce || notice.bdgtAmt);
   const bidType  = bidTypeToKorean(notice.bidType);
+  const { primary: bidMthdPrimary, detail: bidMthdDetail } = splitSucsfbidMthdNm(notice.sucsfbidMthdNm);
+  const noticeNumber = notice.bidNtceOrd ? `${notice.bidNtceNo}-${notice.bidNtceOrd}` : notice.bidNtceNo;
 
   return (
     <div className="flex flex-col gap-6">
@@ -229,13 +232,6 @@ export function NoticeDetailClient({ noticeId }: Props) {
                 }`}
               />
             </button>
-            <Button
-              onClick={handleToggleSave}
-              variant={isBookmarked ? 'outline' : 'default'}
-              className={isBookmarked ? '' : 'bg-blue-600 hover:bg-blue-700 text-white'}
-            >
-              {isBookmarked ? '관심 공고에서 제거' : '관심 공고에 추가'}
-            </Button>
           </div>
         </div>
       </div>
@@ -247,11 +243,17 @@ export function NoticeDetailClient({ noticeId }: Props) {
           {/* 섹션 1: 공고 기본 정보 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="grid grid-cols-2 gap-4">
-              <InfoItem label="공고번호"  value={notice.bidNtceNo} />
+              <InfoItem label="공고번호"  value={noticeNumber} />
               <InfoItem label="공고기관"  value={notice.ntceInsttNm} />
               <InfoItem label="수요기관"  value={notice.dminsttNm || '-'} />
               <InfoItem label="게시일"    value={notice.bidNtceDt ? formatIsoDate(notice.bidNtceDt) : '-'} />
               <InfoItem label="입찰방식"  value={notice.bidMethdNm || '-'} />
+              <InfoItem
+                label="낙찰방법"
+                value={bidMthdPrimary || '-'}
+                inlineDetail={bidMthdDetail}
+                detailTitle={notice.sucsfbidMthdNm ?? undefined}
+              />
               <InfoItem label="예산금액"  value={amount} />
               <InfoItem label="공고 유형" value={bidType} />
 
@@ -376,25 +378,42 @@ export function NoticeDetailClient({ noticeId }: Props) {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h3 className="font-semibold text-gray-900 text-base mb-3">핵심 정보</h3>
             <div className="flex flex-col">
-              {[
-                { label: '마감까지', isDay: true },
-                { label: '예산금액', value: amount },
-                { label: '참가지역', value: formatRegion(notice.prtcptLmtRgnNm) },
-                { label: '입찰방식', value: notice.bidMethdNm || '-' },
-                { label: '공고 유형', value: bidType },
-              ].map(({ label, value, isDay }, i, arr) => (
-                <div
-                  key={label}
-                  className={`flex justify-between items-center py-2 text-sm ${i < arr.length - 1 ? 'border-b border-gray-100' : ''}`}
-                >
-                  <span className="text-gray-500">{label}</span>
-                  {isDay ? (
-                    <DDayBadge dDay={dDay} deadline={deadline} />
-                  ) : (
-                    <span className="text-gray-900 font-medium">{value}</span>
+              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
+                <span className="text-gray-500">마감까지</span>
+                <DDayBadge dDay={dDay} deadline={deadline} />
+              </div>
+              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
+                <span className="text-gray-500">예산금액</span>
+                <span className="text-gray-900 font-medium">{amount}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
+                <span className="text-gray-500">참가지역</span>
+                <span className="text-gray-900 font-medium">{formatRegion(notice.prtcptLmtRgnNm)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
+                <span className="text-gray-500">입찰방식</span>
+                <span className="text-gray-900 font-medium">{notice.bidMethdNm || '-'}</span>
+              </div>
+              <div className="flex justify-between items-start py-2 text-sm border-b border-gray-100">
+                <span className="text-gray-500 flex-shrink-0">낙찰방법</span>
+                <div className="flex flex-col items-end ml-2 min-w-0">
+                  <span className="text-gray-900 font-medium truncate max-w-[160px]">
+                    {bidMthdPrimary || '-'}
+                  </span>
+                  {notice.techAbltEvlRt != null &&
+                   String(notice.techAbltEvlRt).trim().length > 0 &&
+                   notice.bidPrceEvlRt != null &&
+                   String(notice.bidPrceEvlRt).trim().length > 0 && (
+                    <span className="text-xs text-gray-400 mt-0.5">
+                      기술 {notice.techAbltEvlRt}% · 가격 {notice.bidPrceEvlRt}%
+                    </span>
                   )}
                 </div>
-              ))}
+              </div>
+              <div className="flex justify-between items-center py-2 text-sm">
+                <span className="text-gray-500">공고 유형</span>
+                <span className="text-gray-900 font-medium">{bidType}</span>
+              </div>
             </div>
           </div>
 
@@ -437,11 +456,29 @@ export function NoticeDetailClient({ noticeId }: Props) {
   );
 }
 
-function InfoItem({ label, value }: { label: string; value: string }) {
+function InfoItem({
+  label,
+  value,
+  inlineDetail,
+  detailTitle,
+}: {
+  label: string;
+  value: string;
+  inlineDetail?: string | null;
+  detailTitle?: string;
+}) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className="text-base font-medium text-gray-900">{value}</p>
+      <p
+        className={`text-base font-medium text-gray-900${inlineDetail ? ' truncate' : ''}`}
+        title={detailTitle}
+      >
+        {value}
+        {inlineDetail && inlineDetail !== value && (
+          <span className="ml-1.5 text-xs font-normal text-gray-400">({inlineDetail})</span>
+        )}
+      </p>
     </div>
   );
 }
