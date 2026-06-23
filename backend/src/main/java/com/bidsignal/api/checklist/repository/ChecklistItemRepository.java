@@ -28,4 +28,7 @@ public interface ChecklistItemRepository extends JpaRepository<ChecklistItem, Lo
 
     // 관심공고 체크리스트 삭제
     void deleteByWatchlistItem(WatchlistItem watchlistItem);
+
+    // 여러 관심공고의 체크리스트 항목을 한 번에 조회 (목록 화면용)
+    List<ChecklistItem> findByWatchlistItemIdIn(List<Long> watchlistItemIds);
 }

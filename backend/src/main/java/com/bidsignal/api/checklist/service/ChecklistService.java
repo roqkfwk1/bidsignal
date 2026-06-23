@@ -1,6 +1,7 @@
 package com.bidsignal.api.checklist.service;
 
 import com.bidsignal.api.checklist.domain.ChecklistItem;
+import com.bidsignal.api.checklist.domain.ChecklistProgress;
 import com.bidsignal.api.checklist.domain.ChecklistTemplate;
 import com.bidsignal.api.checklist.dto.request.ChecklistItemCheckRequest;
 import com.bidsignal.api.checklist.dto.request.ChecklistItemCreateRequest;
@@ -16,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +41,44 @@ public class ChecklistService {
         ChecklistTemplate template = ChecklistTemplate.from(watchlistItem.getNotice());
 
         return ChecklistResponse.of(watchlistItem, checklistItems, template);
+    }
+
+    /**
+     * 여러 관심공고의 체크리스트 진행률을 일괄 조회한다. (목록 화면용)
+     */
+    public Map<Long, ChecklistProgress> getProgressMap(List<Long> watchlistItemIds) {
+
+        if (watchlistItemIds == null || watchlistItemIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<ChecklistItem> checklistItems = checklistItemRepository.findByWatchlistItemIdIn(watchlistItemIds);
+
+        Map<Long, Integer> totalCountMap = new HashMap<>();
+        Map<Long, Integer> checkedCountMap = new HashMap<>();
+
+        for (ChecklistItem item : checklistItems) {
+            Long watchlistItemId = item.getWatchlistItem().getId();
+
+            int totalCount = totalCountMap.getOrDefault(watchlistItemId, 0);
+            totalCountMap.put(watchlistItemId, totalCount + 1);
+
+            if (item.isChecked()) {
+                int checkedCount = checkedCountMap.getOrDefault(watchlistItemId, 0);
+                checkedCountMap.put(watchlistItemId, checkedCount + 1);
+            }
+        }
+
+        Map<Long, ChecklistProgress> progressMap = new HashMap<>();
+
+        for (Long watchlistItemId : watchlistItemIds) {
+            int totalCount = totalCountMap.getOrDefault(watchlistItemId, 0);
+            int checkedCount = checkedCountMap.getOrDefault(watchlistItemId, 0);
+
+            progressMap.put(watchlistItemId, new ChecklistProgress(totalCount, checkedCount));
+        }
+
+        return progressMap;
     }
 
     /**

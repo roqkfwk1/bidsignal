@@ -1,5 +1,6 @@
 package com.bidsignal.api.watchlist.service;
 
+import com.bidsignal.api.checklist.domain.ChecklistProgress;
 import com.bidsignal.api.checklist.service.ChecklistService;
 import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -38,8 +40,16 @@ public class WatchlistService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        return watchlistItemRepository.findByUserIdWithNotice(userId).stream()
-                .map(WatchlistListResponse::from)
+        List<WatchlistItem> watchlistItems = watchlistItemRepository.findByUserIdWithNotice(userId);
+
+        List<Long> watchlistItemIds = watchlistItems.stream()
+                .map(WatchlistItem::getId)
+                .toList();
+
+        Map<Long, ChecklistProgress> progressMap = checklistService.getProgressMap(watchlistItemIds);
+
+        return watchlistItems.stream()
+                .map(item -> WatchlistListResponse.from(item, progressMap.get(item.getId())))
                 .toList();
     }
 

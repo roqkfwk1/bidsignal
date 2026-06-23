@@ -1,5 +1,6 @@
 package com.bidsignal.api.watchlist.dto.response;
 
+import com.bidsignal.api.checklist.domain.ChecklistProgress;
 import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.watchlist.domain.WatchlistItem;
 import com.bidsignal.api.watchlist.domain.WatchlistStatus;
@@ -28,8 +29,22 @@ public class WatchlistListResponse {
     @JsonProperty("dDay")
     private Long dDay;
 
-    public static WatchlistListResponse from(WatchlistItem watchlistItem) {
+    private int checklistTotalCount;
+    private int checklistCheckedCount;
+    private int checklistProgressRate;
+
+    public static WatchlistListResponse from(WatchlistItem watchlistItem, ChecklistProgress progress) {
         Notice notice = watchlistItem.getNotice();
+
+        int totalCount = 0;
+        int checkedCount = 0;
+        int progressRate = 0;
+
+        if (progress != null) {
+            totalCount = progress.totalCount();
+            checkedCount = progress.checkedCount();
+            progressRate = progress.progressRate();
+        }
 
         return WatchlistListResponse.builder()
                 .watchlistItemId(watchlistItem.getId())
@@ -42,6 +57,9 @@ public class WatchlistListResponse {
                 .status(watchlistItem.getStatus())
                 .memo(watchlistItem.getMemo())
                 .dDay(calculateDDay(notice.getBidClseDt()))
+                .checklistTotalCount(totalCount)
+                .checklistCheckedCount(checkedCount)
+                .checklistProgressRate(progressRate)
                 .build();
     }
 
