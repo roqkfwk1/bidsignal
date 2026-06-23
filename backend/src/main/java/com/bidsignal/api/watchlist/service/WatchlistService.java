@@ -1,5 +1,6 @@
 package com.bidsignal.api.watchlist.service;
 
+import com.bidsignal.api.checklist.service.ChecklistService;
 import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.notice.domain.Notice;
@@ -28,6 +29,7 @@ public class WatchlistService {
     private final NoticeRepository noticeRepository;
     private final UserRepository userRepository;
     private final NotificationHistoryRepository notificationHistoryRepository;
+    private final ChecklistService checklistService;
 
     // 관심 공고 목록 조회
     public List<WatchlistListResponse> getWatchlist(Long userId) {
@@ -58,6 +60,8 @@ public class WatchlistService {
         WatchlistItem watchlistItem = WatchlistItem.create(user, notice);
         WatchlistItem savedWatchlistItem = watchlistItemRepository.save(watchlistItem);
 
+        checklistService.createDefaultChecklistItems(savedWatchlistItem);
+
         return WatchlistSaveResponse.from(savedWatchlistItem);
     }
 
@@ -68,6 +72,7 @@ public class WatchlistService {
         WatchlistItem item = watchlistItemRepository.findByUserIdAndNoticeIdWithNotice(userId, noticeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.WATCHLIST_ITEM_NOT_FOUND));
 
+        checklistService.deleteChecklistItems(item);
         notificationHistoryRepository.deleteByWatchlistItem(item);
         watchlistItemRepository.delete(item);
     }
