@@ -210,17 +210,11 @@ public enum ChecklistTemplate {
 
     private static void addExtraItems(List<String> items, Notice notice) {
 
-        String prtcptLmtRgnNm = value(notice.getPrtcptLmtRgnNm());
         String cntrctCnclsMthdNm = value(notice.getCntrctCnclsMthdNm());
         String bidMethdNm = value(notice.getBidMethdNm());
         String sucsfbidMthdAppStd = value(notice.getSucsfbidMthdAppStd());
         String techAbltEvlRt = value(notice.getTechAbltEvlRt());
         String bidPrceEvlRt = value(notice.getBidPrceEvlRt());
-
-        // 지역제한 조건
-        if (!prtcptLmtRgnNm.isBlank()) {
-            addIfNotExists(items, "지역제한 충족 여부 확인");
-        }
 
         // 제한경쟁/지명경쟁 조건
         if (contains(cntrctCnclsMthdNm, "제한") || contains(cntrctCnclsMthdNm, "지명")) {

@@ -55,9 +55,6 @@ public class Notice extends BaseEntity {
     @Column(length = 1)
     private String reNtceYn;            // 재공고여부
 
-    @Column(length = 200)
-    private String prtcptLmtRgnNm;      // 참가제한지역명
-
     @Column
     private LocalDateTime bidNtceDt;    // 입찰공고일시
 
@@ -113,7 +110,6 @@ public class Notice extends BaseEntity {
             BidType bidType,
             String ntceKindNm,
             String reNtceYn,
-            String prtcptLmtRgnNm,
             LocalDateTime bidNtceDt,
             LocalDateTime bidBeginDt,
             LocalDateTime bidClseDt,
@@ -139,7 +135,6 @@ public class Notice extends BaseEntity {
         this.bidType = bidType;
         this.ntceKindNm = ntceKindNm;
         this.reNtceYn = reNtceYn;
-        this.prtcptLmtRgnNm = prtcptLmtRgnNm;
         this.bidNtceDt = bidNtceDt;
         this.bidBeginDt = bidBeginDt;
         this.bidClseDt = bidClseDt;

@@ -38,7 +38,6 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                 .where(
                         keywordContains(request.getKeyword()),
                         bidTypesIn(request.getBidTypes()),
-                        regionContains(request.getPrtcptLmtRgnNm()),
                         minAmountGoe(request.getMinAmt()),
                         maxAmountLoe(request.getMaxAmt()),
                         deadlineFromGoe(request.getBidClseDateFrom()),
@@ -56,7 +55,6 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                 .where(
                         keywordContains(request.getKeyword()),
                         bidTypesIn(request.getBidTypes()),
-                        regionContains(request.getPrtcptLmtRgnNm()),
                         minAmountGoe(request.getMinAmt()),
                         maxAmountLoe(request.getMaxAmt()),
                         deadlineFromGoe(request.getBidClseDateFrom()),
@@ -134,14 +132,6 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
         }
 
         return notice.bidType.in(bidTypes);
-    }
-
-    private BooleanExpression regionContains(String prtcptLmtRgnNm) {
-        if (prtcptLmtRgnNm == null || prtcptLmtRgnNm.isBlank()) {
-            return null;
-        }
-
-        return notice.prtcptLmtRgnNm.contains(prtcptLmtRgnNm);
     }
 
     private BooleanExpression minAmountGoe(Long minAmt) {

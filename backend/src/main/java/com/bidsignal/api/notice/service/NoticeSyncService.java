@@ -174,7 +174,6 @@ public class NoticeSyncService {
                 .bidType(bidType)
                 .ntceKindNm(item.getNtceKindNm())
                 .reNtceYn(item.getReNtceYn())
-                .prtcptLmtRgnNm(item.getPrtcptLmtRgnNm())
                 .bidNtceDt(parseDateTime(item.getBidNtceDt()))
                 .bidBeginDt(parseDateTime(item.getBidBeginDt()))
                 .bidClseDt(parseDateTime(item.getBidClseDt()))

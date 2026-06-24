@@ -52,8 +52,6 @@ public class NaraBidNoticeItem {
     private String sucsfbidLwltRate;       // 낙찰하한율
 
     // 지역 제한 정보
-    private String prtcptLmtRgnCd;         // 참가제한지역코드
-    private String prtcptLmtRgnNm;         // 참가제한지역명
     private String cnstrtsiteRgnNm;        // 공사현장지역명
     private String rgnLmtBidLocplcJdgmBssCd; // 지역제한입찰소재지판단기준코드
     private String rgnLmtBidLocplcJdgmBssNm; // 지역제한입찰소재지판단기준명

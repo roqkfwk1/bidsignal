@@ -19,7 +19,6 @@ public class NoticeListResponse {
     private String dminsttNm;
     private BidType bidType;
     private String ntceKindNm;
-    private String prtcptLmtRgnNm;
     private LocalDateTime bidNtceDt;
     private LocalDateTime bidClseDt;
     private Long bdgtAmt;
@@ -36,7 +35,6 @@ public class NoticeListResponse {
                 .dminsttNm(notice.getDminsttNm())
                 .bidType(notice.getBidType())
                 .ntceKindNm(notice.getNtceKindNm())
-                .prtcptLmtRgnNm(notice.getPrtcptLmtRgnNm())
                 .bidNtceDt(notice.getBidNtceDt())
                 .bidClseDt(notice.getBidClseDt())
                 .bdgtAmt(notice.getBdgtAmt())
