@@ -13,9 +13,9 @@ import type { SearchCondition, NotificationSettings } from '@/types/notice';
 
 /* ── 상수 ── */
 const BID_TYPES = [
-  { code: 'CONSTRUCTION', label: '공사' },
   { code: 'GOODS',        label: '물품' },
   { code: 'SERVICE',      label: '용역' },
+  { code: 'CONSTRUCTION', label: '공사' },
   { code: 'FOREIGN',      label: '외자' },
   { code: 'ETC',          label: '기타' },
 ] as const;

@@ -220,9 +220,9 @@ function PaginationBar({
 /* BidType 멀티 선택 필터                                      */
 /* ────────────────────────────────────────────────────────── */
 const BID_TYPE_OPTIONS = [
-  { code: 'CONSTRUCTION', label: '공사' },
   { code: 'GOODS',        label: '물품' },
   { code: 'SERVICE',      label: '용역' },
+  { code: 'CONSTRUCTION', label: '공사' },
   { code: 'FOREIGN',      label: '외자' },
   { code: 'ETC',          label: '기타' },
 ] as const;
