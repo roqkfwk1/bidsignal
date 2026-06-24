@@ -2,10 +2,12 @@ package com.bidsignal.api.notice.dto.response;
 
 import com.bidsignal.api.notice.domain.BidType;
 import com.bidsignal.api.notice.domain.Notice;
+import com.bidsignal.api.notice.domain.NoticeAttachment;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -37,8 +39,14 @@ public class NoticeDetailResponse {
     private String techAbltEvlRt;
     private String bidPrceEvlRt;
     private String bidNtceDtlUrl;
+    private List<NoticeAttachmentResponse> attachments;
 
-    public static NoticeDetailResponse from(Notice notice) {
+    public static NoticeDetailResponse from(Notice notice, List<NoticeAttachment> attachments) {
+
+        List<NoticeAttachmentResponse> attachmentResponses = attachments.stream()
+                .map(NoticeAttachmentResponse::from)
+                .toList();
+
         return NoticeDetailResponse.builder()
                 .id(notice.getId())
                 .bidNtceNo(notice.getBidNtceNo())
@@ -66,6 +74,7 @@ public class NoticeDetailResponse {
                 .techAbltEvlRt(notice.getTechAbltEvlRt())
                 .bidPrceEvlRt(notice.getBidPrceEvlRt())
                 .bidNtceDtlUrl(notice.getBidNtceDtlUrl())
+                .attachments(attachmentResponses)
                 .build();
     }
 }

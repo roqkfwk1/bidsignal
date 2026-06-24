@@ -4,10 +4,12 @@ import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.notice.domain.BidType;
 import com.bidsignal.api.notice.domain.Notice;
+import com.bidsignal.api.notice.domain.NoticeAttachment;
 import com.bidsignal.api.notice.dto.response.NoticeSyncResponse;
 import com.bidsignal.api.notice.external.nara.NaraBidNoticeClient;
 import com.bidsignal.api.notice.external.nara.dto.NaraBidNoticeItem;
 import com.bidsignal.api.notice.external.nara.dto.NaraBidNoticeResponse;
+import com.bidsignal.api.notice.repository.NoticeAttachmentRepository;
 import com.bidsignal.api.notice.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -29,6 +32,7 @@ public class NoticeSyncService {
 
     private final NaraBidNoticeClient naraBidNoticeClient;
     private final NoticeRepository noticeRepository;
+    private final NoticeAttachmentRepository noticeAttachmentRepository;
 
 
     /**
@@ -120,6 +124,12 @@ public class NoticeSyncService {
                 Notice notice = toNotice(item, bidType);
                 noticeRepository.save(notice);
                 savedCount++;
+
+                List<NoticeAttachment> attachments = extractAttachments(item, notice);
+
+                if (!attachments.isEmpty()) {
+                    noticeAttachmentRepository.saveAll(attachments);
+                }
             }
 
             Integer totalCount = response.getTotalCount();
@@ -232,5 +242,38 @@ public class NoticeSyncService {
                 && hasText(item.getBidNtceOrd())
                 && hasText(item.getBidNtceNm())
                 && hasText(item.getNtceInsttNm());
+    }
+
+    /**
+     * 나라장터 공고에서 첨부파일 정보를 추출한다.
+     */
+    private List<NoticeAttachment> extractAttachments(NaraBidNoticeItem item, Notice notice) {
+
+        String[] fileNames = {
+                item.getNtceSpecFileNm1(), item.getNtceSpecFileNm2(), item.getNtceSpecFileNm3(),
+                item.getNtceSpecFileNm4(), item.getNtceSpecFileNm5(), item.getNtceSpecFileNm6(),
+                item.getNtceSpecFileNm7(), item.getNtceSpecFileNm8(), item.getNtceSpecFileNm9(),
+                item.getNtceSpecFileNm10()
+        };
+
+        String[] fileUrls = {
+                item.getNtceSpecDocUrl1(), item.getNtceSpecDocUrl2(), item.getNtceSpecDocUrl3(),
+                item.getNtceSpecDocUrl4(), item.getNtceSpecDocUrl5(), item.getNtceSpecDocUrl6(),
+                item.getNtceSpecDocUrl7(), item.getNtceSpecDocUrl8(), item.getNtceSpecDocUrl9(),
+                item.getNtceSpecDocUrl10()
+        };
+
+        List<NoticeAttachment> attachments = new ArrayList<>();
+
+        for (int i = 0; i < fileUrls.length; i++) {
+
+            if (!hasText(fileUrls[i])) {
+                continue;
+            }
+
+            attachments.add(NoticeAttachment.create(notice, fileNames[i], fileUrls[i]));
+        }
+
+        return attachments;
     }
 }
