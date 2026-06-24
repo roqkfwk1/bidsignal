@@ -32,6 +32,7 @@ export async function login(email: string, password: string): Promise<TokenRespo
   if (typeof window !== 'undefined') {
     localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    window.dispatchEvent(new Event('authchange'));
   }
   return tokens;
 }
@@ -43,6 +44,8 @@ export async function logout(): Promise<void> {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
+      localStorage.removeItem('bidsignal_conditions');
+      window.dispatchEvent(new Event('authchange'));
       window.location.href = '/login';
     }
   }

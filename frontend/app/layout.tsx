@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const notoSansKR = Noto_Sans_KR({
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="ko" className={`${notoSansKR.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+        <Toaster position="top-center" offset={{ top: 72 }} />
       </body>
     </html>
   );

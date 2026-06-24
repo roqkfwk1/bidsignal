@@ -9,6 +9,7 @@ export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY };
 function forceLogout(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.dispatchEvent(new Event('authchange'));
   window.location.href = '/login';
 }
 

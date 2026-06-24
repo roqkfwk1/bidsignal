@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, MessageCircle, Phone, Mail, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageCircle, Mail, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -35,12 +35,12 @@ const FAQ_ITEMS = [
   {
     question: '비밀번호를 잊어버렸어요.',
     answer:
-      '현재 비밀번호 찾기 기능은 준비 중입니다. 고객센터(1544-1234)로 문의주시면 도움드리겠습니다.',
+      '현재 비밀번호 찾기 기능은 준비 중입니다. bidsignal.help@gmail.com으로 문의주시면 도움드리겠습니다.',
   },
   {
     question: '회원 탈퇴는 어떻게 하나요?',
     answer:
-      '고객센터 이메일(support@bidsignal.kr)로 탈퇴 신청을 보내주시면 처리해드립니다. 탈퇴 시 저장된 공고·메모·설정 정보가 모두 삭제됩니다.',
+      'bidsignal.help@gmail.com으로 탈퇴 신청을 보내주시면 처리해드립니다. 탈퇴 시 저장된 공고·메모·설정 정보가 모두 삭제됩니다.',
   },
 ];
 
@@ -148,35 +148,21 @@ export default function HelpPage() {
           <div className="flex flex-col gap-4">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 size-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Phone className="size-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">전화 문의</p>
-                <p className="text-base font-semibold text-gray-900 mt-0.5">1544-1234</p>
-                <p className="text-sm text-gray-400 mt-0.5">평일 09:00 ~ 18:00</p>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-100" />
-
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 size-9 rounded-lg bg-blue-50 flex items-center justify-center">
                 <Mail className="size-4 text-blue-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">이메일 문의</p>
-                <p className="text-base font-semibold text-gray-900 mt-0.5">support@bidsignal.kr</p>
+                <p className="text-base font-semibold text-gray-900 mt-0.5">bidsignal.help@gmail.com</p>
                 <p className="text-sm text-gray-400 mt-0.5">1~2 영업일 내 답변</p>
               </div>
             </div>
           </div>
 
-          <Button
-            className="w-full mt-5 bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => alert('준비 중입니다.')}
-          >
-            문의하기
-          </Button>
+          <a href="mailto:bidsignal.help@gmail.com" className="block mt-5">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              문의하기
+            </Button>
+          </a>
         </div>
 
         {/* 공지사항 안내 */}
@@ -184,8 +170,7 @@ export default function HelpPage() {
           <h3 className="font-semibold text-blue-800 text-base mb-2">서비스 안내</h3>
           <ul className="flex flex-col gap-2">
             {[
-              '현재 1차 MVP 서비스 운영 중입니다.',
-              '마감 임박 알림, 입찰 서류 체크리스트 기능은 2차 업데이트에서 순차적으로 제공될 예정입니다.',
+              '마감 임박 알림과 입찰 서류 준비 체크리스트를 제공하고 있습니다.',
               '개선 의견은 이메일로 보내주시면 적극 반영합니다.',
             ].map((tip) => (
               <li key={tip} className="flex gap-2 text-sm text-blue-700">

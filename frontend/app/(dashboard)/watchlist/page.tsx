@@ -132,6 +132,24 @@ function NoticeCard({
         <span className="text-sm text-gray-400">{deadline}</span>
       </div>
 
+      {/* ── 체크리스트 진행률 ── */}
+      {item.checklistTotalCount > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">
+              체크리스트 {item.checklistCheckedCount}/{item.checklistTotalCount}
+            </span>
+            <span className="text-sm text-gray-500">({item.checklistProgressRate}%)</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
+              style={{ width: `${item.checklistProgressRate}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── 메모 ── */}
       <Link href={`/notices/${item.noticeId}`} className="block min-h-[20px]">
         {item.memo ? (

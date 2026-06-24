@@ -27,6 +27,12 @@ export interface NoticeListItem {
 }
 
 // ── 백엔드 공고 상세 응답 ─────────────────────────────────────────────
+export interface NoticeAttachment {
+  id: number;
+  fileName: string;
+  fileUrl: string;
+}
+
 export interface NoticeDetail extends NoticeListItem {
   reNtceYn: string;
   bidNtceDt: string;
@@ -39,6 +45,7 @@ export interface NoticeDetail extends NoticeListItem {
   bidMethdNm: string;
   techAbltEvlRt: number | string | null;
   bidPrceEvlRt: number | string | null;
+  attachments: NoticeAttachment[];
 }
 
 // ── 백엔드 관심 공고 응답 ─────────────────────────────────────────────
@@ -53,6 +60,9 @@ export interface WatchlistItem {
   status: WatchlistStatus;
   memo: string;
   dDay: number | null;
+  checklistTotalCount: number;
+  checklistCheckedCount: number;
+  checklistProgressRate: number;
 }
 
 // ── 백엔드 관심 공고 저장 응답 ───────────────────────────────────────
@@ -152,6 +162,31 @@ export interface SearchCondition {
 }
 
 export type WatchlistStatus = 'REVIEWING' | 'PREPARING' | 'SUBMITTED' | 'DROPPED';
+
+// ── 체크리스트 ────────────────────────────────────────────────────────
+export interface ChecklistItemResponse {
+  id: number;
+  title: string;
+  checked: boolean;
+  sortOrder: number;
+  defaultItem: boolean;
+  checkedAt: string | null;
+}
+
+export interface ChecklistResponse {
+  noticeId: number;
+  noticeTitle: string;
+  templateType: string;
+  templateTitle: string;
+  guideMessage: string;
+  sucsfbidMthdNm: string | null;
+  techAbltEvlRt: number | string | null;
+  bidPrceEvlRt: number | string | null;
+  totalCount: number;
+  checkedCount: number;
+  progressRate: number;
+  items: ChecklistItemResponse[];
+}
 
 // ── 알림 내역 ─────────────────────────────────────────────────────────
 export interface NotificationHistory {

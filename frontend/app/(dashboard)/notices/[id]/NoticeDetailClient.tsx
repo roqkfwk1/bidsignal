@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Star, Download, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Star, FileText, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,8 +27,12 @@ import {
   deleteWatchlist,
   updateWatchlistStatus,
   updateWatchlistMemo,
+  getChecklist,
+  toggleChecklistItem,
+  addChecklistItem,
 } from '@/lib/api/watchlist';
 import { ACCESS_TOKEN_KEY } from '@/lib/api';
+import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import {
   computeDDay,
   formatIsoDate,
@@ -36,25 +40,19 @@ import {
   formatRegion,
   bidTypeToKorean,
 } from '@/lib/utils';
-import type { NoticeDetail, WatchlistStatus } from '@/types/notice';
+import type {
+  NoticeDetail,
+  WatchlistStatus,
+  ChecklistResponse,
+  ChecklistItemResponse,
+} from '@/types/notice';
 import { splitSucsfbidMthdNm } from '@/lib/notice';
 
 interface Props {
   noticeId: number;
 }
 
-const mockFiles = [
-  { name: '입찰공고문.pdf' },
-  { name: '설계도면.dwg' },
-  { name: '현장설명서.hwp' },
-];
 
-const qualifications = [
-  { label: '업종 제한', value: '건축공사업 면허 보유' },
-  { label: '실적 요건', value: '최근 3년 이내 유사 공사 실적' },
-  { label: '지역 제한', value: '해당 지역 소재 업체 우대' },
-  { label: '기타 요건', value: '사업자 등록증 필수' },
-];
 
 /* ── 로딩 스켈레톤 ── */
 function DetailSkeleton() {
@@ -95,39 +93,68 @@ export function NoticeDetailClient({ noticeId }: Props) {
   const [showToast, setShowToast]             = useState(false);
   const [showLoginModal, setShowLoginModal]   = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setFetchError(false);
+  const [memoSaving, setMemoSaving]         = useState(false);
 
-    /* 비로그인 상태에서 watchlist API를 호출하면 401 → 전역 login redirect 발생하므로 토큰이 있을 때만 호출 */
-    const isLoggedIn = !!localStorage.getItem(ACCESS_TOKEN_KEY);
-    const [noticeResult, watchlistResult] = await Promise.allSettled([
-      getNotice(noticeId),
-      isLoggedIn ? getWatchlist() : Promise.resolve([]),
-    ]);
+  const [checklist, setChecklist]           = useState<ChecklistResponse | null>(null);
+  const [checklistLoading, setChecklistLoading] = useState(false);
+  const [newItemTitle, setNewItemTitle]     = useState('');
 
-    if (noticeResult.status === 'rejected') {
-      setFetchError(true);
-      setLoading(false);
-      return;
-    }
+  const [refreshKey, setRefreshKey] = useState(0);
 
-    setNotice(noticeResult.value);
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setFetchError(false);
 
-    if (watchlistResult.status === 'fulfilled') {
-      const saved = watchlistResult.value.find((w) => w.noticeId === noticeId);
-      if (saved) {
-        setIsBookmarked(true);
-        setWatchlistStatus(saved.status);
-        setMemo(saved.memo ?? '');
+      /* 비로그인 상태에서 watchlist API를 호출하면 401 → 전역 login redirect 발생하므로 토큰이 있을 때만 호출 */
+      const isLoggedIn = !!localStorage.getItem(ACCESS_TOKEN_KEY);
+      const [noticeResult, watchlistResult] = await Promise.allSettled([
+        getNotice(noticeId),
+        isLoggedIn ? getWatchlist() : Promise.resolve([]),
+      ]);
+
+      if (noticeResult.status === 'rejected') {
+        setFetchError(true);
+        setLoading(false);
+        return;
       }
+
+      setNotice(noticeResult.value);
+
+      if (watchlistResult.status === 'fulfilled') {
+        const saved = watchlistResult.value.find((w) => w.noticeId === noticeId);
+        if (saved) {
+          setIsBookmarked(true);
+          setWatchlistStatus(saved.status);
+          setMemo(saved.memo ?? '');
+          setChecklistLoading(true);
+          try {
+            const checklistData = await getChecklist(noticeId);
+            setChecklist(checklistData);
+          } catch {
+            setChecklist(null);
+          } finally {
+            setChecklistLoading(false);
+          }
+        }
+      }
+
+      setLoading(false);
     }
+    load();
+  }, [noticeId, refreshKey]);
 
-    setLoading(false);
+  const fetchChecklist = useCallback(async () => {
+    setChecklistLoading(true);
+    try {
+      const data = await getChecklist(noticeId);
+      setChecklist(data);
+    } catch {
+      setChecklist(null);
+    } finally {
+      setChecklistLoading(false);
+    }
   }, [noticeId]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
 
   async function handleToggleSave() {
     if (!notice) return;
@@ -141,6 +168,8 @@ export function NoticeDetailClient({ noticeId }: Props) {
       try {
         await deleteWatchlist(noticeId);
         setIsBookmarked(false);
+        setChecklist(null);
+        setChecklistLoading(false);
       } catch { /* 실패 시 상태 유지 */ }
     } else {
       try {
@@ -149,6 +178,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
         setWatchlistStatus('REVIEWING');
         setMemo('');
         setShowToast(true);
+        fetchChecklist();
       } catch { /* 실패 시 상태 유지 */ }
     }
   }
@@ -164,8 +194,63 @@ export function NoticeDetailClient({ noticeId }: Props) {
   }
 
   async function handleMemoSave() {
+    setMemoSaving(true);
     try {
       await updateWatchlistMemo(noticeId, memo);
+      showSuccessToast('메모가 저장되었습니다');
+    } catch {
+      showErrorToast('메모 저장에 실패했습니다. 다시 시도해주세요');
+    } finally {
+      setMemoSaving(false);
+    }
+  }
+
+  async function handleToggleItem(itemId: number, checked: boolean) {
+    if (!checklist) return;
+
+    const originalItems = checklist.items;
+
+    const applyItems = (items: ChecklistItemResponse[], base: ChecklistResponse): ChecklistResponse => {
+      const checkedCount = items.filter((i) => i.checked).length;
+      const progressRate = base.totalCount > 0 ? Math.round((checkedCount / base.totalCount) * 100) : 0;
+      return { ...base, items, checkedCount, progressRate };
+    };
+
+    // 낙관적 업데이트
+    const optimisticItems = originalItems.map((item) =>
+      item.id === itemId ? { ...item, checked } : item
+    );
+    setChecklist(applyItems(optimisticItems, checklist));
+
+    try {
+      const updated = await toggleChecklistItem(noticeId, itemId, checked);
+      setChecklist((prev) => {
+        if (!prev) return prev;
+        const items = prev.items.map((item) => (item.id === itemId ? updated : item));
+        const checkedCount = items.filter((i) => i.checked).length;
+        const progressRate = prev.totalCount > 0 ? Math.round((checkedCount / prev.totalCount) * 100) : 0;
+        return { ...prev, items, checkedCount, progressRate };
+      });
+    } catch {
+      // 실패 시 원복
+      setChecklist(applyItems(originalItems, checklist));
+    }
+  }
+
+  async function handleAddItem() {
+    if (!newItemTitle.trim() || !checklist) return;
+    const title = newItemTitle.trim();
+    setNewItemTitle('');
+    try {
+      const newItem = await addChecklistItem(noticeId, title);
+      setChecklist((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: [...prev.items, newItem],
+          totalCount: prev.totalCount + 1,
+        };
+      });
     } catch { /* 실패 무시 */ }
   }
 
@@ -178,7 +263,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
           <ArrowLeft className="size-4" /> 목록으로
         </Link>
         <div className="bg-white rounded-xl border border-gray-200">
-          <ApiErrorState onRetry={load} />
+          <ApiErrorState onRetry={() => setRefreshKey((k) => k + 1)} />
         </div>
       </div>
     );
@@ -272,7 +357,22 @@ export function NoticeDetailClient({ noticeId }: Props) {
             </div>
           </div>
 
-          {/* 섹션 2: 탭 */}
+          {/* 섹션 2: 체크리스트 (관심공고 등록 시에만 표시) */}
+          {isBookmarked && (
+            checklistLoading ? (
+              <Skeleton className="h-48 w-full rounded-xl" />
+            ) : checklist ? (
+              <ChecklistSection
+                checklist={checklist}
+                onToggle={handleToggleItem}
+                onAdd={handleAddItem}
+                newItemTitle={newItemTitle}
+                onNewItemTitleChange={setNewItemTitle}
+              />
+            ) : null
+          )}
+
+          {/* 섹션 3: 탭 */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <Tabs defaultValue="detail" className="w-full gap-0">
               <div className="border-b border-gray-100 px-2 pt-1">
@@ -300,36 +400,29 @@ export function NoticeDetailClient({ noticeId }: Props) {
               </TabsContent>
 
               <TabsContent value="qualifications" className="p-6 text-base">
-                <div className="grid grid-cols-2 gap-4">
-                  {qualifications.map(({ label, value }) => (
-                    <div key={label} className="rounded-lg bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500 mb-1">{label}</p>
-                      <p className="text-base text-gray-800 font-medium">{value}</p>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-base text-gray-500 text-center py-4">자격요건 정보는 준비 중입니다.</p>
               </TabsContent>
 
               <TabsContent value="files" className="p-6 text-base">
-                <div className="flex flex-col divide-y divide-gray-100">
-                  {mockFiles.map(({ name }) => (
-                    <div key={name} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                      <div className="flex items-center gap-3">
-                        <FileText className="size-5 text-gray-400" />
-                        <span className="text-base text-gray-700">{name}</span>
+                {notice.attachments.length === 0 ? (
+                  <p className="text-base text-gray-500 text-center py-4">첨부파일이 없습니다.</p>
+                ) : (
+                  <div className="flex flex-col divide-y divide-gray-100">
+                    {notice.attachments.map(({ id, fileName, fileUrl }) => (
+                      <div key={id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                        <FileText className="size-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-base text-blue-600 hover:text-blue-700 hover:underline break-all"
+                        >
+                          {fileName}
+                        </a>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => alert('준비 중입니다.')}
-                        className="gap-1.5"
-                      >
-                        <Download className="size-3.5" />
-                        다운로드
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
@@ -356,7 +449,9 @@ export function NoticeDetailClient({ noticeId }: Props) {
                 />
                 <div className="flex justify-between items-center mt-1.5">
                   <span className="text-xs text-gray-400">{memo.length}/200</span>
-                  <Button size="sm" onClick={handleMemoSave}>저장</Button>
+                  <Button size="sm" onClick={handleMemoSave} disabled={memoSaving}>
+                    {memoSaving ? '저장 중...' : '저장'}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -369,7 +464,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
                 + 관심 공고에 추가
               </Button>
               <p className="text-sm text-gray-500 mt-2 text-center leading-relaxed">
-                저장하면 마감 임박 시 대시보드에서 바로 확인할 수 있어요.
+                저장하면 마감 임박 알림과 함께, 낙찰방법에 맞는 준비 체크리스트도 자동으로 만들어드려요.
               </p>
             </div>
           )}
@@ -410,10 +505,19 @@ export function NoticeDetailClient({ noticeId }: Props) {
                   )}
                 </div>
               </div>
-              <div className="flex justify-between items-center py-2 text-sm">
+              <div className={`flex justify-between items-center py-2 text-sm ${isBookmarked && checklist ? 'border-b border-gray-100' : ''}`}>
                 <span className="text-gray-500">공고 유형</span>
                 <span className="text-gray-900 font-medium">{bidType}</span>
               </div>
+              {isBookmarked && checklist && (
+                <div className="flex justify-between items-center py-2 text-sm">
+                  <span className="text-gray-500">준비 진행률</span>
+                  <span className="text-gray-900 font-medium">
+                    {checklist.checkedCount}/{checklist.totalCount}
+                    <span className="ml-1 text-gray-500 font-normal">({checklist.progressRate}%)</span>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -479,6 +583,117 @@ function InfoItem({
           <span className="ml-1.5 text-xs font-normal text-gray-400">({inlineDetail})</span>
         )}
       </p>
+    </div>
+  );
+}
+
+interface ChecklistSectionProps {
+  checklist: ChecklistResponse;
+  onToggle: (itemId: number, checked: boolean) => void;
+  onAdd: () => void;
+  newItemTitle: string;
+  onNewItemTitleChange: (v: string) => void;
+}
+
+function ChecklistSection({
+  checklist,
+  onToggle,
+  onAdd,
+  newItemTitle,
+  onNewItemTitleChange,
+}: ChecklistSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      {/* 헤더 — 항상 표시 */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-gray-900 text-base">{checklist.templateTitle}</h3>
+          <button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-label={isExpanded ? '체크리스트 접기' : '체크리스트 펼치기'}
+            className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          </button>
+        </div>
+        {checklist.guideMessage && (
+          <p className="text-sm text-gray-500 mt-1">{checklist.guideMessage}</p>
+        )}
+      </div>
+
+      {/* 진행률 — 항상 표시 */}
+      <div className={isExpanded ? 'mb-5' : ''}>
+        <div className="flex justify-between items-center mb-1.5">
+          <span className="text-sm text-gray-600">준비 진행률</span>
+          <span className="text-sm font-semibold text-gray-900">
+            {checklist.checkedCount}/{checklist.totalCount}
+            <span className="ml-1 text-gray-500 font-normal">({checklist.progressRate}%)</span>
+          </span>
+        </div>
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-600 rounded-full transition-all duration-300"
+            style={{ width: `${checklist.progressRate}%` }}
+          />
+        </div>
+      </div>
+
+      {/* 항목 목록 + 추가 입력창 — 접으면 숨김 */}
+      {isExpanded && (
+        <>
+          {checklist.totalCount === 0 ? (
+            <p className="text-base text-gray-500 text-center py-4">체크리스트 항목이 없습니다.</p>
+          ) : (
+            <div className="flex flex-col">
+              {checklist.items.map((item) => (
+                <label
+                  key={item.id}
+                  className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-gray-50 rounded-lg px-2 -mx-2"
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => onToggle(item.id, !item.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                  />
+                  <span
+                    className={`text-base flex-1 ${
+                      item.checked ? 'line-through text-gray-400' : 'text-gray-800'
+                    }`}
+                  >
+                    {item.title}
+                  </span>
+                  {!item.defaultItem && (
+                    <span className="text-xs text-gray-400 flex-shrink-0">직접 추가</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+            <input
+              type="text"
+              value={newItemTitle}
+              onChange={(e) => onNewItemTitleChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') onAdd(); }}
+              placeholder="항목을 입력하세요"
+              maxLength={100}
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <Button
+              onClick={onAdd}
+              disabled={!newItemTitle.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+            >
+              추가
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

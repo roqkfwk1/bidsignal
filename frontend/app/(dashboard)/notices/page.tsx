@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useSyncExternalStore, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronLeft, ChevronRight, Search, Star } from 'lucide-react';
@@ -49,6 +49,55 @@ import { splitSucsfbidMthdNm } from '@/lib/notice';
 type SearchPhase = 'idle' | 'loading' | 'success' | 'error';
 
 const LS_KEY = 'bidsignal_conditions';
+
+/* ────────────────────────────────────────────────────────── */
+/* useSyncExternalStore helpers — localStorage → React state  */
+/* ────────────────────────────────────────────────────────── */
+function subscribeAuthChange(callback: () => void) {
+  window.addEventListener('storage', callback);
+  window.addEventListener('authchange', callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener('authchange', callback);
+  };
+}
+
+function getIsLoggedInSnapshot(): boolean {
+  return !!localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+function getIsLoggedInServerSnapshot(): boolean {
+  return false;
+}
+
+let cachedSavedConditionRaw: string | null = null;
+let cachedSavedConditionParsed: SearchCondition | null = null;
+
+function getSavedConditionSnapshot(): SearchCondition | null {
+  const raw = localStorage.getItem(LS_KEY);
+  if (raw === cachedSavedConditionRaw) return cachedSavedConditionParsed;
+  cachedSavedConditionRaw = raw;
+  if (!raw) {
+    cachedSavedConditionParsed = null;
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    cachedSavedConditionParsed = {
+      region:             typeof parsed.region === 'string' ? parsed.region : '',
+      bidTypes:           Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
+      keywords:           typeof parsed.keywords === 'string' ? parsed.keywords : '',
+      urgentAlertEnabled: Boolean(parsed.urgentAlertEnabled),
+    };
+  } catch {
+    cachedSavedConditionParsed = null;
+  }
+  return cachedSavedConditionParsed;
+}
+
+function getSavedConditionServerSnapshot(): SearchCondition | null {
+  return null;
+}
 
 function sortToApiParam(sort: string): string {
   if (sort === 'latest')      return 'rgstDt,desc';
@@ -311,21 +360,17 @@ export default function NoticesPage() {
   const [showToast, setShowToast]               = useState(false);
   const [showLoginModal, setShowLoginModal]     = useState(false);
   const [conditionSidebarOpen, setConditionSidebarOpen] = useState(true);
-  const [savedCondition, setSavedCondition] = useState<SearchCondition | null>(null);
+  const isLoggedIn = useSyncExternalStore(
+    subscribeAuthChange,
+    getIsLoggedInSnapshot,
+    getIsLoggedInServerSnapshot,
+  );
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      setSavedCondition({
-        region:   typeof parsed.region === 'string' ? parsed.region : '',
-        bidTypes: Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
-        keywords: typeof parsed.keywords === 'string' ? parsed.keywords : '',
-        urgentAlertEnabled: Boolean(parsed.urgentAlertEnabled),
-      });
-    } catch { /* ignore */ }
-  }, []);
+  const savedCondition = useSyncExternalStore(
+    subscribeAuthChange,
+    getSavedConditionSnapshot,
+    getSavedConditionServerSnapshot,
+  );
 
   /* 로그인 상태일 때만 관심 공고 목록 로드 (비로그인이면 watchlist API → 401 → 전체 login redirect 방지) */
   useEffect(() => {
@@ -769,8 +814,8 @@ export default function NoticesPage() {
         </section>
       </div>
 
-      {/* ── 오른쪽 보조 패널 ── */}
-      {conditionSidebarOpen ? (
+      {/* ── 오른쪽 보조 패널 (로그인 상태에서만 표시) ── */}
+      {isLoggedIn && conditionSidebarOpen ? (
         <div className="w-72 flex-shrink-0 flex flex-col gap-4">
           {/* 패널 1: 관심 조건 */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -838,7 +883,7 @@ export default function NoticesPage() {
             )}
           </div>
         </div>
-      ) : (
+      ) : isLoggedIn ? (
         <div className="flex-shrink-0">
           <button
             type="button"
@@ -850,7 +895,7 @@ export default function NoticesPage() {
             <ChevronLeft className="size-4" />
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* 저장 완료 토스트 */}
       <SaveToast show={showToast} onHide={() => setShowToast(false)} />

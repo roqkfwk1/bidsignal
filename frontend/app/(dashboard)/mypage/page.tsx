@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   User,
@@ -137,14 +138,17 @@ export default function MyPage() {
           <h3 className="font-semibold text-gray-900 text-base mb-3">나의 현황</h3>
           <div className="flex flex-col">
             {/* 관심 공고 — 실제 데이터 */}
-            <div className="flex justify-between items-center py-3 text-sm">
+            <Link
+              href="/watchlist"
+              className="flex justify-between items-center py-3 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <span className="text-gray-600">관심 공고</span>
               {loading ? (
                 <Skeleton className="h-5 w-10" />
               ) : (
                 <span className="font-bold text-blue-600">{watchlistCount}건</span>
               )}
-            </div>
+            </Link>
           </div>
         </div>
 
@@ -152,17 +156,18 @@ export default function MyPage() {
         <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
           <h3 className="font-semibold text-blue-800 text-base mb-2">도움이 필요하신가요?</h3>
           <p className="text-sm text-blue-700 leading-relaxed mb-4">
-            고객센터: 1544-1234
+            bidsignal.help@gmail.com
             <br />
-            평일 09:00 ~ 18:00
+            1~2 영업일 내 답변
           </p>
-          <Button
-            variant="outline"
-            className="w-full text-blue-600 border-blue-300 hover:bg-blue-100 hover:border-blue-400"
-            onClick={() => alert('준비 중입니다.')}
-          >
-            문의하기
-          </Button>
+          <a href="mailto:bidsignal.help@gmail.com" className="block">
+            <Button
+              variant="outline"
+              className="w-full text-blue-600 border-blue-300 hover:bg-blue-100 hover:border-blue-400"
+            >
+              문의하기
+            </Button>
+          </a>
         </div>
       </div>
     </div>
