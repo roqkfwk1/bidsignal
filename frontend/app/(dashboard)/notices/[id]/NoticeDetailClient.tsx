@@ -99,6 +99,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
   const [newItemTitle, setNewItemTitle]     = useState('');
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab]   = useState('detail');
 
   useEffect(() => {
     async function load() {
@@ -373,7 +374,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
 
           {/* 섹션 3: 탭 */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <Tabs defaultValue="detail" className="w-full gap-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full gap-0">
               <div className="border-b border-gray-100 px-2 pt-1">
                 <TabsList variant="line" className="bg-transparent h-auto pb-0 gap-0 w-auto">
                   {['detail', 'qualifications', 'files'].map((val, i) => (
@@ -399,7 +400,35 @@ export function NoticeDetailClient({ noticeId }: Props) {
               </TabsContent>
 
               <TabsContent value="qualifications" className="p-6 text-base">
-                <p className="text-base text-gray-500 text-center py-4">자격요건 정보는 준비 중입니다.</p>
+                <div className="flex flex-col items-center gap-4 py-6">
+                  <p className="text-base text-gray-600 text-center">
+                    자격요건은 첨부된 파일에서 확인하실 수 있어요.
+                  </p>
+                  <div className="flex gap-2">
+                    {notice.attachments.length > 0 && (
+                      <Button
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => setActiveTab('files')}
+                      >
+                        <FileText className="size-4" />
+                        첨부파일 보기
+                      </Button>
+                    )}
+                    {notice.bidNtceDtlUrl && (
+                      <a
+                        href={notice.bidNtceDtlUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="outline" className="gap-1.5">
+                          <ExternalLink className="size-4" />
+                          공고 원문 보기
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="files" className="p-6 text-base">
