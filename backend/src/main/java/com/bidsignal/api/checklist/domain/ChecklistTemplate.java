@@ -241,11 +241,6 @@ public enum ChecklistTemplate {
             addIfNotExists(items, "기술능력/가격 평가비율 확인");
         }
 
-        // 공사 공고 보조 항목
-        if (notice.getBidType() == BidType.CONSTRUCTION) {
-            addIfNotExists(items, "공사 관련 면허 및 실적 조건 확인");
-        }
-
         // 물품 공고 보조 항목
         if (notice.getBidType() == BidType.GOODS) {
             addIfNotExists(items, "물품 규격 및 납품 조건 확인");
@@ -254,6 +249,11 @@ public enum ChecklistTemplate {
         // 용역 공고 보조 항목
         if (notice.getBidType() == BidType.SERVICE) {
             addIfNotExists(items, "용역 수행범위 및 과업지시서 확인");
+        }
+
+        // 공사 공고 보조 항목
+        if (notice.getBidType() == BidType.CONSTRUCTION) {
+            addIfNotExists(items, "공사 관련 면허 및 실적 조건 확인");
         }
     }
 
