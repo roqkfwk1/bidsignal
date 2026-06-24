@@ -6,14 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { bidTypeToKorean, REGIONS } from '@/lib/utils';
+import { bidTypeToKorean } from '@/lib/utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notifications';
 import type { SearchCondition, NotificationSettings } from '@/types/notice';
@@ -30,7 +23,6 @@ const BID_TYPES = [
 const LS_KEY = 'bidsignal_conditions';
 
 const INITIAL: SearchCondition = {
-  region: '',
   bidTypes: [],
   keywords: '',
   urgentAlertEnabled: false,
@@ -69,7 +61,6 @@ export default function ConditionsPage() {
       return {
         ...INITIAL,
         ...parsed,
-        region:   typeof parsed.region === 'string' ? parsed.region : '',
         bidTypes: Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
       };
     } catch {
@@ -132,28 +123,7 @@ export default function ConditionsPage() {
 
         {/* 섹션 2: 설정 폼 */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          {/* 항목 1: 지역 */}
-          <FormField label="지역">
-            <Select
-              value={condition.region || 'all'}
-              onValueChange={(v) => setCondition((c) => ({ ...c, region: v === 'all' ? '' : v }))}
-            >
-              <SelectTrigger className="h-10 text-base max-w-xs">
-                <SelectValue placeholder="전체" />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                <SelectItem value="all">전체 (미설정)</SelectItem>
-                {REGIONS.map((r) => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-2">
-              선택하지 않으면 전국 공고가 표시돼요.
-            </p>
-          </FormField>
-
-          {/* 항목 2: 공고 유형 */}
+          {/* 항목 1: 공고 유형 */}
           <FormField label="공고 유형">
             <div className="flex flex-wrap gap-x-6 gap-y-3">
               {BID_TYPES.map(({ code, label }) => (
@@ -220,16 +190,6 @@ export default function ConditionsPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h3 className="font-semibold text-gray-900 text-base mb-3">현재 설정</h3>
           <div className="flex flex-col gap-3 text-sm">
-            <PreviewRow label="지역">
-              {condition.region ? (
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium inline-block mt-0.5">
-                  {condition.region}
-                </span>
-              ) : (
-                <span className="text-gray-400 text-xs">미설정 (전국)</span>
-              )}
-            </PreviewRow>
-
             <PreviewRow label="공고 유형">
               <div className="flex flex-wrap gap-1 mt-0.5">
                 {condition.bidTypes.length > 0 ? (
@@ -262,7 +222,6 @@ export default function ConditionsPage() {
           <h3 className="font-semibold text-blue-800 text-base mb-3">설정 도움말</h3>
           <ul className="flex flex-col gap-2">
             {[
-              '지역을 선택하면 해당 지역 공고만 표시돼요.',
               '키워드는 공고명에서 검색됩니다.',
               '저장된 조건은 공고 찾기의 기본 필터로 자동 적용돼요.',
             ].map((tip) => (

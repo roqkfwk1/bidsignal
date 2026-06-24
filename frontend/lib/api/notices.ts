@@ -7,7 +7,6 @@ export async function searchNotices(
   const q = new URLSearchParams();
   if (params.keyword)           q.set('keyword', params.keyword);
   params.bidTypes?.forEach((t) => q.append('bidTypes', t));
-  if (params.prtcptLmtRgnNm)   q.set('prtcptLmtRgnNm', params.prtcptLmtRgnNm);
   if (params.minAmt !== undefined) q.set('minAmt', String(params.minAmt));
   if (params.maxAmt !== undefined) q.set('maxAmt', String(params.maxAmt));
   if (params.bidClseDateFrom)        q.set('bidClseDateFrom', params.bidClseDateFrom);

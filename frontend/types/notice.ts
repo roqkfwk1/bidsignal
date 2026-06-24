@@ -18,7 +18,6 @@ export interface NoticeListItem {
   dminsttNm: string | null;
   bidType: 'GOODS' | 'SERVICE' | 'CONSTRUCTION' | 'FOREIGN' | 'ETC';
   ntceKindNm: string;
-  prtcptLmtRgnNm: string;
   bidNtceDt?: string;
   bidClseDt: string;
   bdgtAmt: number;
@@ -77,7 +76,6 @@ export interface WatchlistSaveResult {
 export interface NoticeSearchParams {
   keyword?: string;
   bidTypes?: string[];
-  prtcptLmtRgnNm?: string;
   minAmt?: number;
   maxAmt?: number;
   bidClseDateFrom?: string;
@@ -131,7 +129,6 @@ export interface Notice {
   amount: string;
   contractType: string;
   category: string;
-  region: string;
   isBookmarked: boolean;
   isModified: boolean;
   matchScore?: number;
@@ -155,7 +152,6 @@ export interface AlertItem {
 }
 
 export interface SearchCondition {
-  region: string;           // 선택된 시도 (빈 문자열 = 전체)
   bidTypes: string[];       // BidType 코드 배열 (예: ['CONSTRUCTION', 'SERVICE'])
   keywords: string;
   urgentAlertEnabled: boolean;

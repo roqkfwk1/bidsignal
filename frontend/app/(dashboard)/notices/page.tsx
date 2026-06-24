@@ -36,9 +36,7 @@ import {
   computeDDay,
   formatIsoDate,
   formatWon,
-  formatRegion,
   bidTypeToKorean,
-  REGIONS,
 } from '@/lib/utils';
 import type { NoticeListItem, NoticeSearchParams, SearchCondition } from '@/types/notice';
 import { splitSucsfbidMthdNm } from '@/lib/notice';
@@ -84,7 +82,6 @@ function getSavedConditionSnapshot(): SearchCondition | null {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     cachedSavedConditionParsed = {
-      region:             typeof parsed.region === 'string' ? parsed.region : '',
       bidTypes:           Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
       keywords:           typeof parsed.keywords === 'string' ? parsed.keywords : '',
       urgentAlertEnabled: Boolean(parsed.urgentAlertEnabled),
@@ -142,7 +139,6 @@ function SkeletonRows() {
       {Array.from({ length: 4 }).map((_, i) => (
         <tr key={i} className="border-t border-gray-100">
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-52 mb-1.5" /><Skeleton className="h-3 w-28" /></td>
-          <td className="px-3 py-4 align-middle"><Skeleton className="h-4 w-10" /></td>
           <td className="px-5 py-4 align-middle"><Skeleton className="h-4 w-28" /></td>
           <td className="px-3 py-4 align-middle"><Skeleton className="h-6 w-20 rounded-md" /></td>
           <td className="px-3 py-4 align-middle"><Skeleton className="h-4 w-16" /></td>
@@ -340,10 +336,9 @@ export default function NoticesPage() {
   const router = useRouter();
 
   /* Filter states */
-  const [query, setQuery]                   = useState('');
-  const [selectedRegion, setSelectedRegion] = useState('all');
-  const [bidTypes, setBidTypes]             = useState<string[]>([]);
-  const [amountRange, setAmountRange]       = useState('all');
+  const [query, setQuery]             = useState('');
+  const [bidTypes, setBidTypes]       = useState<string[]>([]);
+  const [amountRange, setAmountRange] = useState('all');
   const [deadlineFilter, setDeadlineFilter] = useState('all');
   const [includeExpired, setIncludeExpired] = useState(false);
 
@@ -383,10 +378,9 @@ export default function NoticesPage() {
   const runSearch = useCallback(async (
     overrideSort?: string,
     page = 0,
-    overrides?: { region?: string; bidTypes?: string[]; query?: string; includeExpired?: boolean },
+    overrides?: { bidTypes?: string[]; query?: string; includeExpired?: boolean },
   ) => {
     const effectiveSort           = overrideSort ?? sort;
-    const effectiveRegion         = overrides?.region          ?? selectedRegion;
     const effectiveBidTypes       = overrides?.bidTypes        ?? bidTypes;
     const effectiveQuery          = overrides?.query           ?? query;
     const effectiveIncludeExpired = overrides?.includeExpired  ?? includeExpired;
@@ -395,9 +389,8 @@ export default function NoticesPage() {
     setCurrentPage(page);
 
     const params: NoticeSearchParams = {
-      keyword:         effectiveQuery.trim() || undefined,
-      prtcptLmtRgnNm: effectiveRegion !== 'all' ? effectiveRegion : undefined,
-      bidTypes:        effectiveBidTypes.length > 0 ? effectiveBidTypes : undefined,
+      keyword:        effectiveQuery.trim() || undefined,
+      bidTypes:       effectiveBidTypes.length > 0 ? effectiveBidTypes : undefined,
       ...amountRangeToParams(amountRange),
       ...deadlineToParams(deadlineFilter),
       includeExpired: effectiveIncludeExpired || undefined,
@@ -415,7 +408,7 @@ export default function NoticesPage() {
     } catch {
       setPhase('error');
     }
-  }, [query, selectedRegion, bidTypes, amountRange, deadlineFilter, includeExpired, sort]);
+  }, [query, bidTypes, amountRange, deadlineFilter, includeExpired, sort]);
 
   function handleSearch() { runSearch(undefined, 0); }
 
@@ -430,7 +423,6 @@ export default function NoticesPage() {
 
   function resetFilters() {
     setQuery('');
-    setSelectedRegion('all');
     setBidTypes([]);
     setAmountRange('all');
     setDeadlineFilter('all');
@@ -439,15 +431,13 @@ export default function NoticesPage() {
 
   function applyCondition() {
     if (!savedCondition) return;
-    const newRegion   = savedCondition.region || 'all';
     const newBidTypes = savedCondition.bidTypes;
     const newQuery    = savedCondition.keywords || '';
 
-    setSelectedRegion(newRegion);
     setBidTypes(newBidTypes);
     setQuery(newQuery);
 
-    runSearch(undefined, 0, { region: newRegion, bidTypes: newBidTypes, query: newQuery });
+    runSearch(undefined, 0, { bidTypes: newBidTypes, query: newQuery });
   }
 
   async function toggleBookmark(notice: NoticeListItem) {
@@ -488,7 +478,6 @@ export default function NoticesPage() {
   /* 필터 활성화 여부 */
   const hasActiveFilter =
     query.trim() !== '' ||
-    selectedRegion !== 'all' ||
     bidTypes.length > 0 ||
     amountRange !== 'all' ||
     deadlineFilter !== 'all';
@@ -519,23 +508,8 @@ export default function NoticesPage() {
             />
           </div>
 
-          {/* 2행: 지역 / 공고 유형 / 금액 / 마감일
-              flex + flex-1 min-w-0 조합으로 4개 항목 완전 균등 분할.
-              Radix Select는 내부적으로 fragment를 렌더링해 grid item 제약이 불안정하므로
-              각 필터를 flex-1 min-w-0 div로 감싸서 너비 제어를 div 레벨에서 수행함. */}
+          {/* 2행: 공고 유형 / 금액 / 마감일 */}
           <div className="flex gap-3">
-            <div className="flex-1 min-w-0">
-              <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                <SelectTrigger className="w-full h-10 text-base"><SelectValue placeholder="지역" /></SelectTrigger>
-                <SelectContent position="popper">
-                  <SelectItem value="all">전체</SelectItem>
-                  {REGIONS.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="flex-1 min-w-0">
               <BidTypeMultiSelect value={bidTypes} onChange={setBidTypes} />
             </div>
@@ -648,7 +622,6 @@ export default function NoticesPage() {
               <table className="w-full text-base table-fixed">
                 <colgroup>
                   <col />
-                  <col style={{ width: '64px' }} />
                   <col style={{ width: '200px' }} />
                   <col style={{ width: '175px' }} />
                   <col style={{ width: '96px' }} />
@@ -659,7 +632,6 @@ export default function NoticesPage() {
                 <thead>
                   <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                     <th className="text-left px-5 py-3 font-medium">공고명</th>
-                    <th className="text-left px-3 py-3 font-medium whitespace-nowrap">참가지역</th>
                     <th className="text-left px-5 py-3 font-medium whitespace-nowrap">수요기관</th>
                     <th className="text-left px-3 py-3 font-medium whitespace-nowrap">낙찰방법</th>
                     <th className="text-left px-3 py-3 font-medium whitespace-nowrap">게시일</th>
@@ -695,7 +667,6 @@ export default function NoticesPage() {
                 <table className="w-full text-base table-fixed">
                   <colgroup>
                     <col />
-                    <col style={{ width: '64px' }} />
                     <col style={{ width: '200px' }} />
                     <col style={{ width: '175px' }} />
                     <col style={{ width: '96px' }} />
@@ -706,7 +677,6 @@ export default function NoticesPage() {
                   <thead>
                     <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                       <th className="text-left px-5 py-3 font-medium">공고명</th>
-                      <th className="text-left px-3 py-3 font-medium whitespace-nowrap">참가지역</th>
                       <th className="text-left px-5 py-3 font-medium whitespace-nowrap">수요기관</th>
                       <th className="text-left px-3 py-3 font-medium whitespace-nowrap">낙찰방법</th>
                       <th className="text-left px-3 py-3 font-medium whitespace-nowrap">게시일</th>
@@ -741,10 +711,6 @@ export default function NoticesPage() {
                               </span>
                               <BidTypeBadge type={notice.bidType} />
                             </div>
-                          </td>
-
-                          <td className="px-3 py-4 align-middle text-sm text-gray-400 whitespace-nowrap">
-                            {formatRegion(notice.prtcptLmtRgnNm)}
                           </td>
 
                           <td className="px-5 py-4 align-middle text-gray-600 whitespace-nowrap overflow-hidden">
@@ -841,12 +807,6 @@ export default function NoticesPage() {
 
             {savedCondition ? (
               <div className="flex flex-col gap-2">
-                {savedCondition.region && (
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">지역</p>
-                    <p className="text-sm text-gray-700 mt-0.5">{savedCondition.region}</p>
-                  </div>
-                )}
                 {savedCondition.bidTypes.length > 0 && (
                   <div>
                     <p className="text-xs text-gray-400 font-medium">공고 유형</p>

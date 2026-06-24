@@ -58,15 +58,3 @@ export function formatPhoneNumber(phone: string): string {
   if (phone.length !== 11) return phone;
   return `${phone.slice(0, 3)}-${phone.slice(3, 7)}-${phone.slice(7)}`;
 }
-
-/** 참가 제한 지역 표시: 값 없으면 "전국" */
-export function formatRegion(region: string | null | undefined): string {
-  return region?.trim() ? region : '전국';
-}
-
-/** 17개 시도 목록 */
-export const REGIONS = [
-  '서울특별시', '부산광역시', '대구광역시', '인천광역시', '광주광역시',
-  '대전광역시', '울산광역시', '세종특별자치시', '경기도', '강원도',
-  '충청북도', '충청남도', '전라북도', '전라남도', '경상북도', '경상남도', '제주특별자치도',
-] as const;

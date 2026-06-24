@@ -37,7 +37,6 @@ import {
   computeDDay,
   formatIsoDate,
   formatWon,
-  formatRegion,
   bidTypeToKorean,
 } from '@/lib/utils';
 import type {
@@ -480,10 +479,6 @@ export function NoticeDetailClient({ noticeId }: Props) {
               <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
                 <span className="text-gray-500">예산금액</span>
                 <span className="text-gray-900 font-medium">{amount}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
-                <span className="text-gray-500">참가지역</span>
-                <span className="text-gray-900 font-medium">{formatRegion(notice.prtcptLmtRgnNm)}</span>
               </div>
               <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
                 <span className="text-gray-500">입찰방식</span>
