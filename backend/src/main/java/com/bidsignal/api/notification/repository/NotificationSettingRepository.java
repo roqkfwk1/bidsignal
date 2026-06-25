@@ -12,4 +12,7 @@ public interface NotificationSettingRepository extends JpaRepository<Notificatio
 
     // 사용자의 알림 설정 조회
     Optional<NotificationSetting> findByUser(User user);
+
+    // 사용자 알림 삭제
+    void deleteByUser(User user);
 }

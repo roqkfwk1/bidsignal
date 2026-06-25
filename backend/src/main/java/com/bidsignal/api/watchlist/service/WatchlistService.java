@@ -82,6 +82,23 @@ public class WatchlistService {
         WatchlistItem item = watchlistItemRepository.findByUserIdAndNoticeIdWithNotice(userId, noticeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.WATCHLIST_ITEM_NOT_FOUND));
 
+        deleteWatchlistItem(item);
+    }
+
+    // 사용자의 관심 공고 전체 삭제
+    @Transactional
+    public void deleteAllWatchlistItems(Long userId) {
+
+        List<WatchlistItem> items = watchlistItemRepository.findByUserIdWithNotice(userId);
+
+        for (WatchlistItem item : items) {
+            deleteWatchlistItem(item);
+        }
+    }
+
+    // 관심 공고 1건 삭제
+    private void deleteWatchlistItem(WatchlistItem item) {
+
         checklistService.deleteChecklistItems(item);
         notificationHistoryRepository.deleteByWatchlistItem(item);
         watchlistItemRepository.delete(item);

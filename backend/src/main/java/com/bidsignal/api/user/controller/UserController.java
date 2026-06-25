@@ -65,4 +65,13 @@ public class UserController {
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    // 회원탈퇴
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> withdraw(@AuthenticationPrincipal Long userId) {
+
+        userService.withdraw(userId);
+
+        return ResponseEntity.ok(ApiResponse.success());
+    }
 }

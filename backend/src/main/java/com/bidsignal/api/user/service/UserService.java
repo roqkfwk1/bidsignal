@@ -12,6 +12,7 @@ import com.bidsignal.api.user.dto.request.UserSignupRequest;
 import com.bidsignal.api.user.dto.response.TokenResponse;
 import com.bidsignal.api.user.dto.response.UserResponse;
 import com.bidsignal.api.user.repository.UserRepository;
+import com.bidsignal.api.watchlist.service.WatchlistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class UserService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
     private final NotificationSettingRepository notificationSettingRepository;
+    private final WatchlistService watchlistService;
 
     // 회원가입
     @Transactional
@@ -119,5 +121,18 @@ public class UserService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();
+    }
+
+    // 회원 탈퇴
+    @Transactional
+    public void withdraw(Long userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        watchlistService.deleteAllWatchlistItems(userId);
+        notificationSettingRepository.deleteByUser(user);
+        refreshTokenService.deleteByUserId(userId);
+        userRepository.delete(user);
     }
 }
