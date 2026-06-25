@@ -13,10 +13,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { cn, formatPhoneNumber } from '@/lib/utils';
-import { logout, getMyInfo } from '@/lib/api/auth';
+import { logout, getMyInfo, deleteAccount } from '@/lib/api/auth';
 import { getWatchlist } from '@/lib/api/watchlist';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/lib/api';
+import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import type { UserResponse } from '@/types/notice';
 
 
@@ -24,9 +33,11 @@ export default function MyPage() {
   useRequireAuth();
   const router = useRouter();
 
-  const [user, setUser]                     = useState<UserResponse | null>(null);
-  const [watchlistCount, setWatchlistCount] = useState(0);
-  const [loading, setLoading]               = useState(true);
+  const [user, setUser]                         = useState<UserResponse | null>(null);
+  const [watchlistCount, setWatchlistCount]     = useState(0);
+  const [loading, setLoading]                   = useState(true);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [withdrawing, setWithdrawing]           = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -44,6 +55,24 @@ export default function MyPage() {
   function handleLogout() {
     if (confirm('로그아웃 하시겠습니까?')) {
       logout();
+    }
+  }
+
+  async function handleWithdraw() {
+    setWithdrawing(true);
+    try {
+      await deleteAccount();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem('bidsignal_conditions');
+        window.dispatchEvent(new Event('authchange'));
+      }
+      showSuccessToast('탈퇴가 완료되었습니다.');
+      router.push('/login');
+    } catch (err) {
+      showErrorToast(err instanceof Error ? err.message : '탈퇴 처리 중 오류가 발생했습니다.');
+      setWithdrawing(false);
     }
   }
 
@@ -129,6 +158,17 @@ export default function MyPage() {
             onClick={handleLogout}
           />
         </div>
+
+        {/* 회원 탈퇴 — 로그아웃보다 낮은 위계 */}
+        <div className="flex justify-end px-1 -mt-2">
+          <button
+            type="button"
+            onClick={() => setWithdrawModalOpen(true)}
+            className="text-base font-normal text-gray-400 hover:text-gray-600 hover:underline underline-offset-4 transition-colors"
+          >
+            회원 탈퇴
+          </button>
+        </div>
       </div>
 
       {/* ── 오른쪽 보조 패널 ── */}
@@ -170,6 +210,43 @@ export default function MyPage() {
           </a>
         </div>
       </div>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      <Dialog
+        open={withdrawModalOpen}
+        onOpenChange={(open) => { if (!withdrawing) setWithdrawModalOpen(open); }}
+      >
+        <DialogContent showCloseButton={false} className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-gray-900">
+              회원 탈퇴
+            </DialogTitle>
+            <DialogDescription className="text-base text-gray-700 leading-relaxed break-keep space-y-1">
+              <span className="block">회원 탈퇴하시겠습니까?</span>
+              <span className="block">탈퇴 시 모든 정보가 삭제되며 복구할 수 없습니다.</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* 버튼 영역 — 취소(왼쪽/기본 강조), 탈퇴하기(오른쪽/빨간색) */}
+          <div className="-mx-4 -mb-4 flex flex-row gap-2 rounded-b-xl border-t bg-muted/50 p-4">
+            <Button
+              variant="outline"
+              className="flex-1 text-base"
+              onClick={() => setWithdrawModalOpen(false)}
+              disabled={withdrawing}
+            >
+              취소
+            </Button>
+            <Button
+              className="flex-1 text-base bg-[#E53935] hover:bg-[#C62828] text-white border-0"
+              onClick={handleWithdraw}
+              disabled={withdrawing}
+            >
+              {withdrawing ? '처리 중...' : '탈퇴하기'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -218,4 +295,3 @@ function MenuRow({
     </div>
   );
 }
-

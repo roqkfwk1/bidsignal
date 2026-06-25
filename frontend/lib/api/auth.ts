@@ -61,3 +61,7 @@ export async function reissue(refreshToken: string): Promise<TokenResponse> {
 export async function getMyInfo(): Promise<UserResponse> {
   return apiFetch<UserResponse>('/users/me');
 }
+
+export async function deleteAccount(): Promise<void> {
+  await apiFetch<void>('/users/me', { method: 'DELETE' });
+}
