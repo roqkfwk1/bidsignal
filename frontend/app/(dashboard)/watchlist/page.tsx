@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MoreHorizontal } from 'lucide-react';
@@ -173,7 +173,7 @@ function NoticeCard({
 /* ────────────────────────────────────────────────────────── */
 /* Page                                                        */
 /* ────────────────────────────────────────────────────────── */
-export default function WatchlistPage() {
+function WatchlistContent() {
   useRequireAuth();
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -392,5 +392,29 @@ export default function WatchlistPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function WatchlistSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">관심 공고</h1>
+        <p className="text-gray-500 mt-1 text-base">저장한 공고를 한눈에 확인하세요.</p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-48 w-full rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function WatchlistPage() {
+  return (
+    <Suspense fallback={<WatchlistSkeleton />}>
+      <WatchlistContent />
+    </Suspense>
   );
 }
