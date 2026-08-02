@@ -100,6 +100,9 @@ public class Notice extends BaseEntity {
     @Column(length = 512)
     private String bidNtceDtlUrl;       // 입찰공고상세URL
 
+    @Column(length = 800)
+    private String stdNtceDocUrl;   // 표준공고서URL (공고문 원문)
+
     @Builder
     private Notice(
             String bidNtceNo,
@@ -125,7 +128,8 @@ public class Notice extends BaseEntity {
             String sucsfbidMthdAppStd,
             String techAbltEvlRt,
             String bidPrceEvlRt,
-            String bidNtceDtlUrl
+            String bidNtceDtlUrl,
+            String stdNtceDocUrl
     ) {
         this.bidNtceNo = bidNtceNo;
         this.bidNtceOrd = bidNtceOrd;
@@ -151,5 +155,6 @@ public class Notice extends BaseEntity {
         this.techAbltEvlRt = techAbltEvlRt;
         this.bidPrceEvlRt = bidPrceEvlRt;
         this.bidNtceDtlUrl = bidNtceDtlUrl;
+        this.stdNtceDocUrl = stdNtceDocUrl;
     }
 }

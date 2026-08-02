@@ -190,6 +190,7 @@ public class NoticeSyncService {
                 .techAbltEvlRt(item.getTechAbltEvlRt())
                 .bidPrceEvlRt(item.getBidPrceEvlRt())
                 .bidNtceDtlUrl(item.getBidNtceDtlUrl())
+                .stdNtceDocUrl(item.getStdNtceDocUrl())
                 .build();
     }
 
