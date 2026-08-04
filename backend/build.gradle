@@ -60,6 +60,12 @@ dependencies {
 
 	// Email
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+	// Document Parsing (HWP/HWPX/PDF)
+	implementation 'org.apache.poi:poi:5.3.0'
+	implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+	implementation 'kr.dogfoot:hwplib:1.1.9'
+	implementation 'kr.dogfoot:hwpxlib:1.0.8'
 }
 
 tasks.named('test') {
@@ -73,8 +79,8 @@ sourceSets {
 	main.java.srcDirs += [querydslDir]
 }
 
-tasks.withType(JavaCompile).configureEach {
-	options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
+tasks.named('compileJava', JavaCompile) {
+	options.generatedSourceOutputDirectory.set(querydslDir)
 }
 
 clean.doLast {
