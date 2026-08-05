@@ -45,6 +45,7 @@ export interface NoticeDetail extends NoticeListItem {
   techAbltEvlRt: number | string | null;
   bidPrceEvlRt: number | string | null;
   attachments: NoticeAttachment[];
+  aiSummary: string | null;
 }
 
 // ── 백엔드 관심 공고 응답 ─────────────────────────────────────────────

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Star, FileText, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Star, FileText, ExternalLink, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -357,6 +357,9 @@ export function NoticeDetailClient({ noticeId }: Props) {
             </div>
           </div>
 
+          {/* 섹션 1-1: AI 요약 */}
+          <AiSummarySection summary={notice.aiSummary} />
+
           {/* 섹션 2: 체크리스트 (관심공고 등록 시에만 표시) */}
           {isBookmarked && (
             checklistLoading ? (
@@ -607,6 +610,48 @@ function InfoItem({
           <span className="ml-1.5 text-xs font-normal text-gray-400">({inlineDetail})</span>
         )}
       </p>
+    </div>
+  );
+}
+
+function AiSummarySection({ summary }: { summary: string | null }) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold text-gray-900 text-base flex items-center gap-1.5">
+          <Sparkles className="size-4 text-blue-600" />
+          AI 요약
+        </h3>
+        {summary && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-label={isExpanded ? 'AI 요약 접기' : 'AI 요약 펼치기'}
+            className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          </button>
+        )}
+      </div>
+
+      {summary ? (
+        isExpanded && (
+          <div className="mt-3">
+            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
+              {summary}
+            </p>
+            <p className="text-xs text-gray-400 mt-3">
+              AI가 생성한 요약이며, 정확한 내용은 공고 원문을 확인하세요.
+            </p>
+          </div>
+        )
+      ) : (
+        <p className="text-sm text-gray-500 mt-3">
+          요약 준비 중입니다. 잠시 후 다시 확인해주세요.
+        </p>
+      )}
     </div>
   );
 }
