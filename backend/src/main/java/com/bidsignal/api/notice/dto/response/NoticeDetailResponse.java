@@ -38,6 +38,7 @@ public class NoticeDetailResponse {
     private String techAbltEvlRt;
     private String bidPrceEvlRt;
     private String bidNtceDtlUrl;
+    private String aiSummary;
     private List<NoticeAttachmentResponse> attachments;
 
     public static NoticeDetailResponse from(Notice notice, List<NoticeAttachment> attachments) {
@@ -72,6 +73,7 @@ public class NoticeDetailResponse {
                 .techAbltEvlRt(notice.getTechAbltEvlRt())
                 .bidPrceEvlRt(notice.getBidPrceEvlRt())
                 .bidNtceDtlUrl(notice.getBidNtceDtlUrl())
+                .aiSummary(notice.getAiSummary())
                 .attachments(attachmentResponses)
                 .build();
     }
