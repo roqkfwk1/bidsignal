@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_notices_bid_type", columnList = "bid_type"),
                 @Index(name = "idx_notices_bid_clse_dt", columnList = "bid_clse_dt"),
-                @Index(name = "idx_notices_bid_ntce_dt", columnList = "bid_ntce_dt")
+                @Index(name = "idx_notices_bid_ntce_dt", columnList = "bid_ntce_dt"),
+                @Index(name = "idx_notices_ai_summary_std_doc_url", columnList = "ai_summary, std_ntce_doc_url")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -103,6 +104,9 @@ public class Notice extends BaseEntity {
     @Column(length = 800)
     private String stdNtceDocUrl;   // 표준공고서URL (공고문 원문)
 
+    @Column(columnDefinition = "TEXT")
+    private String aiSummary;   // AI 생성 공고 요약
+
     @Builder
     private Notice(
             String bidNtceNo,
@@ -156,5 +160,9 @@ public class Notice extends BaseEntity {
         this.bidPrceEvlRt = bidPrceEvlRt;
         this.bidNtceDtlUrl = bidNtceDtlUrl;
         this.stdNtceDocUrl = stdNtceDocUrl;
+    }
+
+    public void updateAiSummary(String aiSummary) {
+        this.aiSummary = aiSummary;
     }
 }
