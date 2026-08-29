@@ -16,7 +16,6 @@ import org.springframework.web.client.RestClient;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -198,7 +197,7 @@ public class NoticeDocumentExtractor {
 
             return null;
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("ZIP 기반 파일 텍스트 추출 실패. message={}", e.getMessage());
             return null;
         }
