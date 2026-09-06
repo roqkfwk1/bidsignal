@@ -16,6 +16,7 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USERNAME }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          command_timeout: 20m
           script: |
             cd ${{ secrets.LIGHTSAIL_PROJECT_PATH }}
             git pull origin main
