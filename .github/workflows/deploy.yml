@@ -19,5 +19,6 @@ jobs:
           command_timeout: 20m
           script: |
             cd ${{ secrets.LIGHTSAIL_PROJECT_PATH }}
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             docker compose up -d --build
