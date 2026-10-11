@@ -15,3 +15,6 @@ management:
   endpoint:
     health:
       show-details: never
+      group:
+        jobs:
+          include: scheduler
