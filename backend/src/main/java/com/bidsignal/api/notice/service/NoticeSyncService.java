@@ -2,6 +2,7 @@ package com.bidsignal.api.notice.service;
 
 import com.bidsignal.api.global.exception.BusinessException;
 import com.bidsignal.api.global.exception.ErrorCode;
+import com.bidsignal.api.global.monitoring.SchedulerStatusTracker;
 import com.bidsignal.api.notice.domain.BidType;
 import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.notice.domain.NoticeAttachment;
@@ -11,10 +12,12 @@ import com.bidsignal.api.notice.external.nara.dto.NaraBidNoticeItem;
 import com.bidsignal.api.notice.external.nara.dto.NaraBidNoticeResponse;
 import com.bidsignal.api.notice.repository.NoticeAttachmentRepository;
 import com.bidsignal.api.notice.repository.NoticeRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -28,13 +31,23 @@ import java.util.List;
 public class NoticeSyncService {
 
     private static final int NUM_OF_ROWS = 100;
+    private static final String JOB_NAME = "notice-sync";
+    private static final Duration MAX_AGE = Duration.ofHours(3);
     private static final DateTimeFormatter NARA_DATE_TIME_WITH_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter NARA_DATE_TIME_WITHOUT_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final NaraBidNoticeClient naraBidNoticeClient;
     private final NoticeRepository noticeRepository;
     private final NoticeAttachmentRepository noticeAttachmentRepository;
+    private final SchedulerStatusTracker schedulerStatusTracker;
 
+    /**
+     * 애플리케이션 시작 시 공고 수집 작업을 상태 감시 대상으로 등록한다.
+     */
+    @PostConstruct
+    void registerStatus() {
+        schedulerStatusTracker.register(JOB_NAME, MAX_AGE);
+    }
 
     /**
      * 오늘 등록된 나라장터 공고를 동기화한다.
@@ -65,14 +78,22 @@ public class NoticeSyncService {
                 BidType.ETC
         );
 
+        int failedCount = 0;
+
         for (BidType bidType : bidTypes) {
             try {
                 NoticeSyncResponse result = syncBidNotices(bidType, beginDateTime, endDateTime);
                 totalResult = totalResult.plus(result);
                 log.info("{} 공고 수집 완료", bidType);
             } catch (Exception e) {
+                failedCount++;
                 log.error("{} 공고 수집 실패", bidType, e);
             }
+        }
+
+        // 한 유형이라도 실패하면 성공으로 기록하지 않는다.
+        if (failedCount == 0) {
+            schedulerStatusTracker.markSuccess(JOB_NAME);
         }
 
         return totalResult;

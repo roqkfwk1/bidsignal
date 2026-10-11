@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/login").permitAll()
                         .requestMatchers("/api/users/reissue").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
