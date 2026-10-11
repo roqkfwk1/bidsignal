@@ -11,6 +11,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       JAVA_OPTS: "-Xms256m -Xmx512m"
+      TZ: Asia/Seoul
     env_file:
       - .env
     depends_on:

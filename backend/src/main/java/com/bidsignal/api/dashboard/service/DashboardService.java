@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -29,7 +30,7 @@ public class DashboardService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime todayStart = LocalDate.now(ZoneId.of("Asia/Seoul")).atStartOfDay();
 
         LocalDateTime urgentEnd = todayStart.plusDays(4).minusNanos(1); // 오늘 ~ D-3
         LocalDateTime weeklyStart = todayStart.plusDays(4);             // D-4 시작

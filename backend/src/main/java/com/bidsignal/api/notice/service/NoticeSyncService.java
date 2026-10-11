@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -40,7 +41,7 @@ public class NoticeSyncService {
      */
     public void syncTodayNotices() {
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
 
         String beginDateTime = now.toLocalDate().atStartOfDay().format(formatter);
@@ -156,7 +157,7 @@ public class NoticeSyncService {
         }
 
         if (rgstDt == null) {
-            rgstDt = LocalDateTime.now();
+            rgstDt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
         }
 
         String budgetAmount = item.getBdgtAmt();

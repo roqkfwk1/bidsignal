@@ -10,6 +10,7 @@ import lombok.Getter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
 @Getter
@@ -68,7 +69,7 @@ public class WatchlistListResponse {
             return null;
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         LocalDate deadline = bidClseDt.toLocalDate();
 
         return ChronoUnit.DAYS.between(today, deadline);

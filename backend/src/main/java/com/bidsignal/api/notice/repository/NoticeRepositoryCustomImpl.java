@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +32,7 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
     @Override
     public Page<Notice> search(NoticeSearchRequest request, Pageable pageable) {
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
         List<Notice> content = queryFactory
                 .selectFrom(notice)

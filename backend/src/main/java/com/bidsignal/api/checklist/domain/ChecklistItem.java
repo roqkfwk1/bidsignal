@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "checklist_items")
@@ -69,7 +70,7 @@ public class ChecklistItem extends BaseEntity {
         this.checked = checked;
 
         if (checked) {
-            this.checkedAt = LocalDateTime.now();
+            this.checkedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
         } else {
             this.checkedAt = null;
         }
