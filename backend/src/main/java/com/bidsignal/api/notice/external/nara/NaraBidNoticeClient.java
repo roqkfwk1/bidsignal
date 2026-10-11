@@ -4,8 +4,12 @@ import com.bidsignal.api.global.config.NaraApiProperties;
 import com.bidsignal.api.notice.domain.BidType;
 import com.bidsignal.api.notice.external.nara.dto.NaraBidNoticeResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+
+import java.net.http.HttpClient;
+import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
@@ -26,8 +30,16 @@ public class NaraBidNoticeClient {
             case ETC -> "/getBidPblancListInfoEtc";
         };
 
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(30));
+
         RestClient restClient = RestClient.builder()
                 .baseUrl(naraApiProperties.getBaseUrl())
+                .requestFactory(requestFactory)
                 .build();
 
         return restClient.get()
