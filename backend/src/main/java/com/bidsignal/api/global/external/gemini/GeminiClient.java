@@ -6,7 +6,9 @@ import com.bidsignal.api.global.external.gemini.dto.response.GeminiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
 
@@ -44,6 +46,21 @@ public class GeminiClient {
                     .body(GeminiResponse.class);
 
             return extractText(response);
+
+        } catch (RestClientResponseException e) {
+            int status = e.getStatusCode().value();
+
+            if (status == 429 || status == 503) {
+                throw new GeminiTemporaryException(status);
+            }
+
+            log.error("Gemini API 호출 실패: {}", e.getMessage());
+            return null;
+
+        } catch (ResourceAccessException e) {
+            // 메시지에 요청 URL(API 키)이 들어갈 수 있어 클래스명만 기록
+            log.error("Gemini API 연결 실패: {}", e.getClass().getSimpleName());
+            return null;
 
         } catch (Exception e) {
             log.error("Gemini API 호출 실패: {}", e.getMessage());
