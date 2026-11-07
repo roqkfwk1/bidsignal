@@ -21,7 +21,8 @@ import java.util.List;
 public class NoticeSummaryScheduler {
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
-    private static final Duration PAUSE = Duration.ofHours(1);
+    private static final Duration QUOTA_PAUSE = Duration.ofHours(1);
+    private static final Duration UNAVAILABLE_PAUSE = Duration.ofMinutes(5);
 
     private final NoticeRepository noticeRepository;
     private final NoticeSummaryService noticeSummaryService;
@@ -30,7 +31,7 @@ public class NoticeSummaryScheduler {
 
     /**
      * 마감 전 공고를 마감이 가까운 순서로 한 건씩 요약한다. 이전 처리가 끝난 뒤 3분 후 다음 건을 처리한다.
-     * Gemini 호출이 한도 초과로 막히면 1시간 동안 쉰다.
+     * Gemini 호출이 막히면 한도 초과(429)는 1시간, 서버 오류(503)는 5분 동안 쉰다.
      */
     @Scheduled(fixedDelay = 180000)
     public void summarizeOneNotice() {
@@ -60,7 +61,8 @@ public class NoticeSummaryScheduler {
             log.info("공고 요약 처리 완료. noticeId={}", noticeId);
 
         } catch (GeminiTemporaryException e) {
-            pausedUntil = now.plus(PAUSE);
+            Duration pause = e.getStatus() == 429 ? QUOTA_PAUSE : UNAVAILABLE_PAUSE;
+            pausedUntil = now.plus(pause);
             log.warn("Gemini 일시 오류로 요약을 쉽니다. status={}, 재개 시각={}", e.getStatus(), pausedUntil);
         }
     }

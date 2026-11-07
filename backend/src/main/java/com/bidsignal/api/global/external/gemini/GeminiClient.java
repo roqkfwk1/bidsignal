@@ -51,6 +51,9 @@ public class GeminiClient {
             int status = e.getStatusCode().value();
 
             if (status == 429 || status == 503) {
+                if (status == 503) {
+                    log.warn("Gemini API 503 응답: {}", abbreviate(e.getResponseBodyAsString()));
+                }
                 throw new GeminiTemporaryException(status);
             }
 
@@ -66,6 +69,17 @@ public class GeminiClient {
             log.error("Gemini API 호출 실패: {}", e.getMessage());
             return null;
         }
+    }
+
+    private String abbreviate(String body) {
+
+        if (body == null) {
+            return "";
+        }
+
+        String oneLine = body.replaceAll("\\s+", " ");
+
+        return oneLine.length() > 200 ? oneLine.substring(0, 200) : oneLine;
     }
 
     private String extractText(GeminiResponse response) {
