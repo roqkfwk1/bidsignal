@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { NoticeStatus } from "@/types/notice"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -42,13 +41,6 @@ export function bidTypeToKorean(bidType: string): string {
     ETC: '기타',
   };
   return map[bidType] ?? bidType;
-}
-
-/** 공고 상태 파생: reNtceYn, dDay로 NoticeStatus 결정 */
-export function deriveNoticeStatus(dDay: number, reNtceYn?: string): NoticeStatus {
-  if (reNtceYn === 'Y') return 'corrected';
-  if (dDay <= 3) return 'urgent';
-  return 'new';
 }
 
 /** 전화번호를 010-1234-5678 형식으로 변환 */

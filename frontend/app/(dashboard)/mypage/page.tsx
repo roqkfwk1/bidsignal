@@ -3,14 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  User,
-  Settings,
-  Lock,
-  LogOut,
-  ChevronRight,
-  Bell,
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -20,37 +13,81 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AccountLayout,
+  LoadError,
+  LoginRequired,
+  SettingsSection,
+  controlHeight,
+  focusRing,
+} from '@/components/account/AccountLayout';
+import { HELP_EMAIL } from '@/components/auth/AuthForm';
 import { cn, formatPhoneNumber } from '@/lib/utils';
 import { logout, getMyInfo, deleteAccount } from '@/lib/api/auth';
 import { getWatchlist } from '@/lib/api/watchlist';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import { useIsLoggedIn } from '@/lib/hooks/useIsLoggedIn';
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/lib/api';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import type { UserResponse } from '@/types/notice';
 
+const PAGE_DESCRIPTION = '가입 정보를 확인하고 계정 설정을 관리하세요.';
+
+const SHORTCUTS = [
+  { href: '/settings/conditions', label: '관심 조건 설정', description: '공고 찾기에서 불러올 검색 조건' },
+  { href: '/mypage/notifications', label: '알림 설정', description: '마감 임박 이메일 알림 수신과 시점(D-3, D-1)' },
+] as const;
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 py-3 sm:flex-row sm:gap-4">
+      <dt className="text-base text-muted-foreground sm:w-32 sm:shrink-0">{label}</dt>
+      <dd className="min-w-0 text-base wrap-anywhere text-foreground">{children}</dd>
+    </div>
+  );
+}
 
 export default function MyPage() {
   useRequireAuth();
+  const isLoggedIn = useIsLoggedIn();
   const router = useRouter();
 
-  const [user, setUser]                         = useState<UserResponse | null>(null);
-  const [watchlistCount, setWatchlistCount]     = useState(0);
-  const [loading, setLoading]                   = useState(true);
+  const [user, setUser]                           = useState<UserResponse | null>(null);
+  const [userError, setUserError]                 = useState(false);
+  const [watchlistCount, setWatchlistCount]       = useState<number | null>(null);
+  const [loading, setLoading]                     = useState(true);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-  const [withdrawing, setWithdrawing]           = useState(false);
+  const [withdrawing, setWithdrawing]             = useState(false);
 
   useEffect(() => {
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY)) return;
+    let cancelled = false;
     async function load() {
       const [userResult, watchlistResult] = await Promise.allSettled([
         getMyInfo(),
         getWatchlist(),
       ]);
-      if (userResult.status === 'fulfilled')     setUser(userResult.value);
+      if (cancelled) return;
+      if (userResult.status === 'fulfilled') setUser(userResult.value);
+      else setUserError(true);
       if (watchlistResult.status === 'fulfilled') setWatchlistCount(watchlistResult.value.length);
       setLoading(false);
     }
     load();
+    return () => { cancelled = true; };
   }, []);
+
+  async function retryUser() {
+    setLoading(true);
+    setUserError(false);
+    try {
+      setUser(await getMyInfo());
+    } catch {
+      setUserError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function handleLogout() {
     if (confirm('로그아웃 하시겠습니까?')) {
@@ -76,169 +113,143 @@ export default function MyPage() {
     }
   }
 
+  if (!isLoggedIn) {
+    return (
+      <AccountLayout title="마이페이지" description={PAGE_DESCRIPTION}>
+        <LoginRequired description="마이페이지는 로그인한 뒤 이용할 수 있어요." />
+      </AccountLayout>
+    );
+  }
+
   return (
-    <div className="flex gap-6 items-start">
-      {/* ── 왼쪽 메인 ── */}
-      <div className="flex-1 min-w-0 flex flex-col gap-6">
-        {/* 섹션 1: 페이지 제목 */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">마이페이지</h1>
-          <p className="text-gray-500 mt-1 text-base">내 정보를 확인하고 관리하세요.</p>
-        </div>
-
-        {/* 섹션 2: 사용자 프로필 카드 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center gap-5">
-          <div className="flex-shrink-0 flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 text-gray-400">
-            <User className="size-8" />
-          </div>
-
-          <div className="flex-1 min-w-0">
+    <AccountLayout title="마이페이지" description={PAGE_DESCRIPTION}>
+      <div className="flex flex-col gap-6">
+        {/* 가입 정보 */}
+        {userError && !loading ? (
+          <LoadError message="가입 정보를 불러오지 못했어요." onRetry={retryUser} />
+        ) : (
+          <SettingsSection headingId="account-info-heading" title="가입 정보">
             {loading ? (
-              <div className="flex flex-col gap-2">
-                <Skeleton className="h-6 w-28" />
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-4 w-44" />
+              <div aria-hidden="true" className="flex flex-col gap-4 py-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-5 w-56" />
+                <Skeleton className="h-5 w-36" />
               </div>
             ) : (
-              <>
-                <p className="text-xl font-bold text-gray-900">{user?.nickname ?? '-'}님</p>
-                {user?.phoneNumber && (
-                  <p className="text-base text-gray-500 mt-0.5">{formatPhoneNumber(user.phoneNumber)}</p>
-                )}
-                <p className="text-base text-gray-500 mt-0.5">{user?.email ?? '-'}</p>
-              </>
+              <dl className="-my-3 divide-y divide-border">
+                <InfoRow label="닉네임">{user?.nickname || '-'}</InfoRow>
+                <InfoRow label="이메일">{user?.email || '-'}</InfoRow>
+                <InfoRow label="휴대폰 번호">
+                  {user?.phoneNumber
+                    ? formatPhoneNumber(user.phoneNumber)
+                    : <span className="text-muted-foreground">등록하지 않음</span>}
+                </InfoRow>
+                <InfoRow label="관심 공고">
+                  {watchlistCount === null ? (
+                    <span className="text-muted-foreground">불러오지 못함</span>
+                  ) : (
+                    <Link href="/watchlist" className={cn('rounded-sm text-primary tabular-nums hover:underline', focusRing)}>
+                      {watchlistCount}건 보기
+                    </Link>
+                  )}
+                </InfoRow>
+              </dl>
             )}
+          </SettingsSection>
+        )}
+
+        {/* 설정 바로가기 */}
+        <SettingsSection headingId="shortcut-heading" title="설정">
+          <ul className="-my-1 divide-y divide-border">
+            {SHORTCUTS.map(({ href, label, description }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className={cn('-mx-2 flex min-h-14 items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted', focusRing)}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-base font-medium text-foreground">{label}</span>
+                    <span className="block text-base text-muted-foreground">{description}</span>
+                  </span>
+                  <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SettingsSection>
+
+        {/* 계정 관리 */}
+        <SettingsSection headingId="account-manage-heading" title="계정 관리">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-medium text-foreground">로그아웃</p>
+                <p className="text-base text-muted-foreground">이 브라우저에 저장한 관심 조건도 함께 지워져요.</p>
+              </div>
+              <Button type="button" variant="outline" onClick={handleLogout} className={cn(controlHeight, 'self-start px-5 sm:self-auto')}>
+                로그아웃
+              </Button>
+            </div>
+            <div className="flex flex-col gap-2 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-medium text-foreground">회원 탈퇴</p>
+                <p className="text-base text-muted-foreground">모든 정보가 삭제되며 되돌릴 수 없어요.</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setWithdrawModalOpen(true)}
+                className={cn(controlHeight, 'self-start px-5 text-destructive hover:bg-destructive-soft hover:text-destructive sm:self-auto')}
+              >
+                회원 탈퇴
+              </Button>
+            </div>
           </div>
+        </SettingsSection>
 
-          <Button
-            variant="outline"
-            onClick={() => alert('준비 중입니다.')}
-            className="flex-shrink-0 text-gray-700"
-          >
-            정보 수정
-          </Button>
-        </div>
-
-        {/* 섹션 3: 메뉴 목록 */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100">
-          <MenuRow
-            icon={<User className="size-5" />}
-            label="가입 정보"
-            onClick={() => alert('준비 중입니다.')}
-            right={<ChevronRight className="size-5 text-gray-400" />}
-          />
-
-          <MenuRow
-            icon={<Lock className="size-5" />}
-            label="비밀번호 변경"
-            onClick={() => alert('준비 중입니다.')}
-            right={<ChevronRight className="size-5 text-gray-400" />}
-          />
-
-          <MenuRow
-            icon={<Settings className="size-5" />}
-            label="관심 조건 설정"
-            subtitle="공고 찾기 기본 필터로 적용돼요"
-            onClick={() => router.push('/settings/conditions')}
-            right={<ChevronRight className="size-5 text-gray-400" />}
-          />
-
-          <MenuRow
-            icon={<Bell className="size-5" />}
-            label="알림 설정"
-            subtitle="마감 임박 공고 이메일 알림을 설정해요"
-            onClick={() => router.push('/mypage/notifications')}
-            right={<ChevronRight className="size-5 text-gray-400" />}
-          />
-
-          <MenuRow
-            icon={<LogOut className="size-5 text-red-500" />}
-            label="로그아웃"
-            labelClass="text-red-500"
-            onClick={handleLogout}
-          />
-        </div>
-
-        {/* 회원 탈퇴 — 로그아웃보다 낮은 위계 */}
-        <div className="flex justify-end px-1 -mt-2">
-          <button
-            type="button"
-            onClick={() => setWithdrawModalOpen(true)}
-            className="text-base font-normal text-gray-400 hover:text-gray-600 hover:underline underline-offset-4 transition-colors"
-          >
-            회원 탈퇴
-          </button>
-        </div>
+        <p className="text-base text-muted-foreground">
+          도움이 필요하면{' '}
+          {/* 이메일+조사를 한 덩어리로 묶어 이메일 앞에서만 줄이 나뉘게 함 */}
+          <span className="whitespace-nowrap">
+            <a href={`mailto:${HELP_EMAIL}`} className={cn('rounded-sm font-medium text-primary hover:underline', focusRing)}>
+              {HELP_EMAIL}
+            </a>
+            으로
+          </span>{' '}
+          문의해 주세요.
+        </p>
       </div>
 
-      {/* ── 오른쪽 보조 패널 ── */}
-      <div className="w-72 flex-shrink-0 flex flex-col gap-4">
-        {/* 패널 1: 나의 현황 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 text-base mb-3">나의 현황</h3>
-          <div className="flex flex-col">
-            {/* 관심 공고 — 실제 데이터 */}
-            <Link
-              href="/watchlist"
-              className="flex justify-between items-center py-3 text-sm rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <span className="text-gray-600">관심 공고</span>
-              {loading ? (
-                <Skeleton className="h-5 w-10" />
-              ) : (
-                <span className="font-bold text-blue-600">{watchlistCount}건</span>
-              )}
-            </Link>
-          </div>
-        </div>
-
-        {/* 패널 2: 도움말 카드 */}
-        <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
-          <h3 className="font-semibold text-blue-800 text-base mb-2">도움이 필요하신가요?</h3>
-          <p className="text-sm text-blue-700 leading-relaxed mb-4">
-            bidsignal.help@gmail.com
-            <br />
-            1~2 영업일 내 답변
-          </p>
-          <a href="mailto:bidsignal.help@gmail.com" className="block">
-            <Button
-              variant="outline"
-              className="w-full text-blue-600 border-blue-300 hover:bg-blue-100 hover:border-blue-400"
-            >
-              문의하기
-            </Button>
-          </a>
-        </div>
-      </div>
-
-      {/* 회원 탈퇴 확인 모달 */}
+      {/* 회원 탈퇴 확인 — 되돌릴 수 없는 동작이므로 반드시 확인 단계를 거침 */}
       <Dialog
         open={withdrawModalOpen}
         onOpenChange={(open) => { if (!withdrawing) setWithdrawModalOpen(open); }}
       >
         <DialogContent showCloseButton={false} className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-gray-900">
+            <DialogTitle className="text-lg font-bold text-foreground">
               회원 탈퇴
             </DialogTitle>
-            <DialogDescription className="text-base text-gray-700 leading-relaxed break-keep space-y-1">
+            <DialogDescription className="space-y-1 text-base leading-relaxed break-keep text-foreground">
               <span className="block">회원 탈퇴하시겠습니까?</span>
               <span className="block">탈퇴 시 모든 정보가 삭제되며 복구할 수 없습니다.</span>
             </DialogDescription>
           </DialogHeader>
 
-          {/* 버튼 영역 — 취소(왼쪽/기본 강조), 탈퇴하기(오른쪽/빨간색) */}
-          <div className="-mx-4 -mb-4 flex flex-row gap-2 rounded-b-xl border-t bg-muted/50 p-4">
+          {/* 취소(왼쪽/기본 포커스), 탈퇴하기(오른쪽/위험) */}
+          <div className="-mx-4 -mb-4 flex flex-row gap-2 rounded-b-xl border-t border-border bg-muted p-4">
             <Button
+              type="button"
               variant="outline"
-              className="flex-1 text-base"
+              className={cn(controlHeight, 'flex-1')}
               onClick={() => setWithdrawModalOpen(false)}
               disabled={withdrawing}
             >
               취소
             </Button>
             <Button
-              className="flex-1 text-base bg-[#E53935] hover:bg-[#C62828] text-white border-0"
+              type="button"
+              className={cn(controlHeight, 'flex-1 border-0 bg-destructive text-primary-foreground hover:bg-destructive/90')}
               onClick={handleWithdraw}
               disabled={withdrawing}
             >
@@ -247,51 +258,6 @@ export default function MyPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-/* ── 메뉴 행 컴포넌트 ── */
-function MenuRow({
-  icon,
-  label,
-  subtitle,
-  labelClass,
-  onClick,
-  right,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  subtitle?: string;
-  labelClass?: string;
-  onClick?: () => void;
-  right?: React.ReactNode;
-}) {
-  return (
-    <div
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        onClick
-          ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }
-          : undefined
-      }
-      className={cn(
-        'flex items-center justify-between px-6 py-4 transition-colors',
-        onClick ? 'hover:bg-gray-50 cursor-pointer' : ''
-      )}
-    >
-      <div className="flex items-center gap-3 text-gray-700">
-        {icon}
-        <div>
-          <p className={cn('text-base font-medium', labelClass)}>{label}</p>
-          {subtitle && (
-            <p className="text-sm text-gray-400 mt-0.5">{subtitle}</p>
-          )}
-        </div>
-      </div>
-      {right && <div>{right}</div>}
-    </div>
+    </AccountLayout>
   );
 }

@@ -2,184 +2,183 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, MessageCircle, Mail, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HELP_EMAIL } from '@/components/auth/AuthForm';
 import { cn } from '@/lib/utils';
 
-const FAQ_ITEMS = [
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+const controlHeight = 'h-11 text-base md:text-base';
+
+/* 현재 구현된 기능과 대조한 문구 */
+const FAQ_ITEMS: readonly { question: string; answer: React.ReactNode }[] = [
   {
     question: 'BidSignal은 어떤 서비스인가요?',
     answer:
-      '나라장터 공공입찰 공고를 한 곳에서 관리할 수 있는 입찰 업무 도우미 서비스입니다. 공고 검색부터 관심 공고 저장, 마감일 관리까지 입찰 업무 흐름을 끊기지 않게 지원합니다.',
+      '나라장터 공공입찰 공고를 검색하고, 관심 공고로 저장해 진행 상태와 서류 준비, 마감 일정을 함께 관리하는 서비스입니다.',
   },
   {
     question: '공고 데이터는 어디서 가져오나요?',
     answer:
-      '나라장터 OpenAPI(공개 데이터)를 통해 공고를 수집합니다. 나라장터에 등록된 공사·물품·용역·외자 등 모든 공개 입찰 공고를 검색할 수 있습니다.',
+      '나라장터 OpenAPI(공개 데이터)로 공고를 수집합니다. 공사·물품·용역·외자·기타 유형으로 나눠 검색할 수 있습니다.',
+  },
+  {
+    question: '키워드는 어떻게 검색되나요?',
+    answer:
+      '입력한 내용 전체가 공고명에 들어 있는 공고를 찾습니다. 쉼표로 나눠 여러 키워드를 한 번에 검색하지는 않으니, 한 번에 한 단어나 구절로 검색해 주세요.',
   },
   {
     question: '관심 공고는 어떻게 저장하나요?',
     answer:
-      '공고 목록 또는 공고 상세 페이지에서 ★ 아이콘을 클릭하면 관심 공고로 저장됩니다. 저장된 공고는 [관심 공고] 메뉴에서 상태 관리 및 메모와 함께 확인할 수 있습니다.',
+      '로그인한 뒤 공고 찾기 목록의 별 버튼이나 공고 상세의 "관심 공고에 추가" 버튼을 누르면 저장됩니다. 저장한 공고는 [관심 공고]에서 상태별로 확인할 수 있습니다.',
   },
   {
     question: '마감 임박 공고는 어디서 확인하나요?',
     answer:
-      '홈 대시보드 상단에 마감 임박(D-3 이내), 이번 주 마감(D-7 이내) 공고 건수가 표시됩니다. [관심 공고] 메뉴의 "마감임박 (D-3 이내)" 탭에서도 한눈에 확인할 수 있습니다.',
+      '홈의 "오늘 할 일"에서 검토중·준비중인 관심 공고 중 마감이 D-3 이내인 공고와 D-4~D-7인 공고의 건수를 확인할 수 있습니다. [관심 공고]에서도 마감 3일 이내, 7일 이내로 걸러 볼 수 있습니다.',
   },
   {
-    question: '공고 상태(검토중·준비중·제출완료·포기)는 어떻게 변경하나요?',
+    question: '공고 상태(검토중·준비중·제출완료·포기)는 어떻게 바꾸나요?',
     answer:
-      '관심 공고 카드 하단의 상태 드롭다운을 클릭해 변경할 수 있습니다. 공고 상세 페이지 오른쪽 패널에서도 동일하게 변경 가능합니다.',
+      '[관심 공고]에서 각 공고의 상태 메뉴로 바꿀 수 있고, 공고 상세 화면에서도 같은 방식으로 바꿀 수 있습니다.',
   },
   {
-    question: '비밀번호를 잊어버렸어요.',
+    question: '어떤 알림을 받을 수 있나요?',
     answer:
-      '현재 비밀번호 찾기 기능은 준비 중입니다. bidsignal.help@gmail.com으로 문의주시면 도움드리겠습니다.',
+      '검토중·준비중인 관심 공고의 마감 3일 전(D-3)과 1일 전(D-1)에 이메일 알림을 보냅니다. [마이페이지 > 알림 설정]에서 이메일 알림과 시점을 켜고 끌 수 있고, 받은 알림은 [알림 내역]에서 확인할 수 있습니다. 새 공고나 공고 변경을 알려주는 알림은 아직 제공하지 않습니다.',
+  },
+  {
+    question: '관심 조건 설정은 어디에 쓰이나요?',
+    answer:
+      '자주 찾는 공고 유형과 키워드를 저장해 두고, 공고 찾기에서 "저장한 조건 적용" 버튼을 누르면 그 조건으로 검색합니다. 조건은 지금 쓰는 브라우저에만 저장되고 로그아웃하면 지워지며, 이메일 알림 대상에는 쓰이지 않습니다.',
+  },
+  {
+    question: '입찰 서류 체크리스트는 어떻게 쓰나요?',
+    answer:
+      '공고를 관심 공고로 저장하면 낙찰방법과 계약방법에 맞는 기본 항목이 만들어집니다. 공고 상세 화면의 체크리스트에서 항목을 체크하거나 직접 추가할 수 있고, 진행률은 [관심 공고]에서 함께 보입니다.',
+  },
+  {
+    question: '공고문 AI 요약은 모든 공고에 있나요?',
+    answer:
+      '아니요. 요약이 만들어진 공고에만 공고 상세 화면에 표시됩니다. 공고문 파일이 없거나 읽을 수 없는 공고는 요약이 없을 수 있습니다. 요약은 참고용이니 중요한 내용은 공고 원문에서 꼭 확인해 주세요.',
+  },
+  {
+    question: '아이디나 비밀번호를 잊어버렸어요.',
+    answer: (
+      <>
+        아이디·비밀번호 찾기 기능은 준비 중입니다.{' '}
+        <span className="whitespace-nowrap">{HELP_EMAIL}으로</span> 문의해 주세요.
+      </>
+    ),
   },
   {
     question: '회원 탈퇴는 어떻게 하나요?',
     answer:
-      'bidsignal.help@gmail.com으로 탈퇴 신청을 보내주시면 처리해드립니다. 탈퇴 시 저장된 공고·메모·설정 정보가 모두 삭제됩니다.',
+      '[마이페이지 > 계정 관리]에서 회원 탈퇴를 누르고 확인하면 바로 처리됩니다. 탈퇴하면 저장한 공고·메모·설정 정보가 모두 삭제되며 복구할 수 없습니다.',
   },
 ];
 
-const GUIDE_ITEMS = [
-  {
-    href: '/notices',
-    title: '공고 찾기 시작하기',
-    description: '키워드·지역·업종으로 나라장터 공고를 검색해보세요.',
-  },
-  {
-    href: '/watchlist',
-    title: '관심 공고 관리하기',
-    description: '저장한 공고의 상태와 메모를 한눈에 관리하세요.',
-  },
-  {
-    href: '/settings/conditions',
-    title: '관심 조건 설정하기',
-    description: '자주 찾는 지역·업종·키워드를 기본 필터로 저장하세요.',
-  },
-];
+const QUICK_LINKS = [
+  { href: '/notices', title: '공고 찾기', description: '키워드와 공고 유형으로 공고 검색' },
+  { href: '/watchlist', title: '관심 공고', description: '저장한 공고의 상태·메모·체크리스트 관리' },
+  { href: '/settings/conditions', title: '관심 조건 설정', description: '공고 찾기에서 불러올 검색 조건 저장' },
+  { href: '/mypage/notifications', title: '알림 설정', description: '마감 임박(D-3, D-1) 이메일 알림 설정' },
+] as const;
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
+function FaqItem({ id, question, answer }: { id: string; question: string; answer: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const buttonId = `${id}-button`;
+  const panelId = `${id}-panel`;
 
   return (
-    <div className="border-b border-gray-100 last:border-b-0">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-        aria-expanded={open}
-      >
-        <span className="text-base font-medium text-gray-900 pr-4">{question}</span>
-        {open ? (
-          <ChevronUp className="size-5 text-gray-400 flex-shrink-0" />
-        ) : (
-          <ChevronDown className="size-5 text-gray-400 flex-shrink-0" />
-        )}
-      </button>
-      {open && (
-        <div className="px-6 pb-5">
-          <p className="text-base text-gray-600 leading-relaxed">{answer}</p>
-        </div>
-      )}
-    </div>
+    <li className="border-b border-border last:border-b-0">
+      <h3>
+        <button
+          id={buttonId}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className={cn(
+            'flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-muted sm:px-5',
+            'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring'
+          )}
+        >
+          <span className={cn('text-base text-foreground', open ? 'font-bold' : 'font-medium')}>{question}</span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn('size-5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+          />
+        </button>
+      </h3>
+      <div id={panelId} role="region" aria-labelledby={buttonId} hidden={!open} className="px-4 pb-5 sm:px-5">
+        <p className="text-base leading-relaxed break-keep text-muted-foreground">{answer}</p>
+      </div>
+    </li>
   );
 }
 
 export default function HelpPage() {
   return (
-    <div className="flex gap-6 items-start">
-      {/* ── 왼쪽 메인 ── */}
-      <div className="flex-1 min-w-0 flex flex-col gap-6">
-        {/* 섹션 1: 페이지 제목 */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">도움말</h1>
-          <p className="text-gray-500 mt-1 text-base">자주 묻는 질문과 이용 안내를 확인하세요.</p>
-        </div>
-
-        {/* 섹션 2: 빠른 시작 가이드 */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <BookOpen className="size-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">빠른 시작 가이드</h2>
-          </div>
-          <div className="flex flex-col gap-3">
-            {GUIDE_ITEMS.map(({ href, title, description }) => (
-              <Link
-                key={href}
-                href={href}
-                className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center justify-between hover:bg-gray-50 hover:border-blue-200 transition-colors group"
-              >
-                <div>
-                  <p className="text-base font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                    {title}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-0.5">{description}</p>
-                </div>
-                <ChevronDown className="size-5 text-gray-400 -rotate-90 flex-shrink-0 ml-4" />
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* 섹션 3: 자주 묻는 질문 */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <MessageCircle className="size-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">자주 묻는 질문</h2>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {FAQ_ITEMS.map((item) => (
-              <FaqItem key={item.question} question={item.question} answer={item.answer} />
-            ))}
-          </div>
-        </section>
+    <div className="flex flex-col gap-6 lg:gap-8">
+      <div>
+        <h1 className="text-[26px] font-bold tracking-tight text-foreground lg:text-[32px]">도움말</h1>
+        <p className="mt-1 text-base text-muted-foreground">자주 묻는 질문과 이용 안내를 확인하세요.</p>
       </div>
 
-      {/* ── 오른쪽 고객센터 패널 ── */}
-      <div className="w-72 flex-shrink-0 flex flex-col gap-4">
-        {/* 고객센터 연락처 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 text-base mb-4">고객센터</h3>
-
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 size-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Mail className="size-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">이메일 문의</p>
-                <p className="text-base font-semibold text-gray-900 mt-0.5">bidsignal.help@gmail.com</p>
-                <p className="text-sm text-gray-400 mt-0.5">1~2 영업일 내 답변</p>
-              </div>
-            </div>
-          </div>
-
-          <a href="mailto:bidsignal.help@gmail.com" className="block mt-5">
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-              문의하기
-            </Button>
-          </a>
-        </div>
-
-        {/* 공지사항 안내 */}
-        <div className={cn('bg-blue-50 rounded-xl border border-blue-100 p-4')}>
-          <h3 className="font-semibold text-blue-800 text-base mb-2">서비스 안내</h3>
-          <ul className="flex flex-col gap-2">
-            {[
-              '마감 임박 알림과 입찰 서류 준비 체크리스트를 제공하고 있습니다.',
-              '개선 의견은 이메일로 보내주시면 적극 반영합니다.',
-            ].map((tip) => (
-              <li key={tip} className="flex gap-2 text-sm text-blue-700">
-                <span className="flex-shrink-0 mt-0.5">•</span>
-                <span className="leading-relaxed">{tip}</span>
-              </li>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10">
+        {/* 자주 묻는 질문 */}
+        <section aria-labelledby="faq-heading" className="min-w-0">
+          <h2 id="faq-heading" className="mb-3 text-lg font-bold text-foreground">자주 묻는 질문</h2>
+          <ul className="overflow-hidden rounded-[10px] border border-border bg-card">
+            {FAQ_ITEMS.map((item, i) => (
+              <FaqItem key={item.question} id={`faq-${i}`} question={item.question} answer={item.answer} />
             ))}
           </ul>
-        </div>
+        </section>
+
+        <aside className="flex flex-col gap-6">
+          {/* 빠른 시작 */}
+          <section aria-labelledby="quick-heading">
+            <h2 id="quick-heading" className="mb-3 text-lg font-bold text-foreground">빠른 시작</h2>
+            <ul className="divide-y divide-border overflow-hidden rounded-[10px] border border-border bg-card">
+              {QUICK_LINKS.map(({ href, title, description }) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className={cn(
+                      'flex min-h-14 items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted',
+                      'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring'
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-base font-medium text-foreground">{title}</span>
+                      <span className="block text-base text-muted-foreground">{description}</span>
+                    </span>
+                    <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* 서비스 안내 + 문의 (반영을 약속하지 않는 문장으로 정리) */}
+          <section aria-labelledby="contact-heading" className="rounded-[10px] border border-border bg-card px-4 py-5 sm:px-5">
+            <h2 id="contact-heading" className="text-lg font-bold text-foreground">서비스 안내</h2>
+            <p className="mt-2 text-base leading-relaxed break-keep text-foreground">
+              마감 임박 알림, 입찰 서류 준비 체크리스트, 공고문 AI 요약을 제공하고 있습니다.
+              개선 의견은 이메일로 보내주세요.
+            </p>
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-base text-muted-foreground">이메일 문의</p>
+              <p className="text-base font-semibold whitespace-nowrap text-foreground">{HELP_EMAIL}</p>
+              <p className="text-base text-muted-foreground">문의를 남기시면 확인 후 답변드립니다.</p>
+            </div>
+            <Button asChild variant="outline" className={cn(controlHeight, 'mt-4 w-full')}>
+              <a href={`mailto:${HELP_EMAIL}`} className={focusRing}>문의하기</a>
+            </Button>
+          </section>
+        </aside>
       </div>
     </div>
   );

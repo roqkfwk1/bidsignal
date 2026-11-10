@@ -1,13 +1,25 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { bidTypeToKorean } from '@/lib/utils';
+import {
+  AccountLayout,
+  LoginRequired,
+  SaveStatus,
+  SettingsSection,
+  SwitchRow,
+  controlHeight,
+  focusRing,
+  type SaveTone,
+} from '@/components/account/AccountLayout';
+import { cn } from '@/lib/utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import { useIsLoggedIn } from '@/lib/hooks/useIsLoggedIn';
+import { ACCESS_TOKEN_KEY } from '@/lib/api';
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notifications';
 import type { SearchCondition, NotificationSettings } from '@/types/notice';
 
@@ -28,222 +40,292 @@ const INITIAL: SearchCondition = {
   urgentAlertEnabled: false,
 };
 
-/* ── 폼 필드 래퍼 ── */
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-6 last:mb-0">
-      <label className="block text-base font-semibold text-gray-800 mb-2">{label}</label>
-      {children}
-    </div>
-  );
+/* ── localStorage(bidsignal_conditions) 읽기 — 저장 형식은 기존과 동일 ── */
+function subscribeStorage(callback: () => void) {
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+}
+const getRawSnapshot = () => localStorage.getItem(LS_KEY);
+const getRawServerSnapshot = () => null;
+
+function parseCondition(raw: string | null): { condition: SearchCondition; broken: boolean } {
+  if (!raw) return { condition: INITIAL, broken: false };
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      condition: {
+        ...INITIAL,
+        ...parsed,
+        bidTypes: Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
+        keywords: typeof parsed.keywords === 'string' ? parsed.keywords : '',
+      },
+      broken: false,
+    };
+  } catch {
+    return { condition: INITIAL, broken: true };
+  }
 }
 
-/* ── 미리보기 행 helper ── */
-function PreviewRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
-      <span className="text-xs text-gray-400 font-medium">{label}</span>
-      {children}
-    </div>
-  );
+function sameCondition(a: SearchCondition, b: SearchCondition): boolean {
+  if (a.keywords !== b.keywords) return false;
+  if (a.bidTypes.length !== b.bidTypes.length) return false;
+  return a.bidTypes.every((t) => b.bidTypes.includes(t));
 }
+
+type NotifLoad = 'loading' | 'error' | 'ready';
+type SaveResult =
+  | null
+  | 'success'
+  | 'error-condition'
+  | 'error-email'
+  | 'error-all';
 
 /* ── 메인 페이지 ── */
 export default function ConditionsPage() {
   useRequireAuth();
+  const isLoggedIn = useIsLoggedIn();
 
-  const [condition, setCondition] = useState<SearchCondition>(() => {
-    if (typeof window === 'undefined') return INITIAL;
-    try {
-      const saved = localStorage.getItem(LS_KEY);
-      if (!saved) return INITIAL;
-      const parsed = JSON.parse(saved) as Record<string, unknown>;
-      return {
-        ...INITIAL,
-        ...parsed,
-        bidTypes: Array.isArray(parsed.bidTypes) ? (parsed.bidTypes as string[]) : [],
-      };
-    } catch {
-      return INITIAL;
-    }
-  });
+  /* 저장된 조건 (localStorage) + 편집 중 초안. 초안이 null이면 저장값을 그대로 보여준다. */
+  const raw = useSyncExternalStore(subscribeStorage, getRawSnapshot, getRawServerSnapshot);
+  const { condition: savedCondition, broken } = useMemo(() => parseCondition(raw), [raw]);
+  const [draft, setDraft] = useState<SearchCondition | null>(null);
+  const condition = draft ?? savedCondition;
 
-  const [notifSettings, setNotifSettings]       = useState<NotificationSettings | null>(null);
-  const [notifLoading, setNotifLoading]         = useState(true);
-  const [showToast, setShowToast]               = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* 마감 임박 이메일 알림 (서버 설정) */
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
+  const [notifLoad, setNotifLoad]         = useState<NotifLoad>('loading');
+  const [emailDraft, setEmailDraft]       = useState<boolean | null>(null);
+
+  const [saving, setSaving]         = useState(false);
+  const [saveResult, setSaveResult] = useState<SaveResult>(null);
 
   useEffect(() => {
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY)) return;
+    let cancelled = false;
     getNotificationSettings()
-      .then(setNotifSettings)
-      .catch(() => {})
-      .finally(() => setNotifLoading(false));
-    return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+      .then((s) => { if (!cancelled) { setNotifSettings(s); setNotifLoad('ready'); } })
+      .catch(() => { if (!cancelled) setNotifLoad('error'); });
+    return () => { cancelled = true; };
   }, []);
 
-  function handleSave() {
-    localStorage.setItem(LS_KEY, JSON.stringify(condition));
-    setShowToast(true);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setShowToast(false), 2500);
+  function retryNotif() {
+    setNotifLoad('loading');
+    getNotificationSettings()
+      .then((s) => { setNotifSettings(s); setNotifLoad('ready'); })
+      .catch(() => setNotifLoad('error'));
+  }
+
+  const conditionDirty = draft !== null && !sameCondition(draft, savedCondition);
+  const emailValue = emailDraft ?? notifSettings?.emailNotificationEnabled ?? false;
+  const emailDirty = notifSettings !== null && emailDraft !== null
+    && emailDraft !== notifSettings.emailNotificationEnabled;
+  const dirty = conditionDirty || emailDirty;
+
+  function editCondition(next: SearchCondition) {
+    setDraft(next);
+    setSaveResult(null);
   }
 
   function toggleBidType(code: string) {
-    setCondition((c) => ({
-      ...c,
-      bidTypes: c.bidTypes.includes(code)
-        ? c.bidTypes.filter((t) => t !== code)
-        : [...c.bidTypes, code],
-    }));
+    editCondition({
+      ...condition,
+      bidTypes: condition.bidTypes.includes(code)
+        ? condition.bidTypes.filter((t) => t !== code)
+        : [...condition.bidTypes, code],
+    });
   }
 
-  async function handleAlertToggle(value: boolean) {
-    if (!notifSettings) return;
-    const prev = notifSettings;
-    const updated = { ...notifSettings, emailNotificationEnabled: value };
-    setNotifSettings(updated);
-    try {
-      await updateNotificationSettings(updated);
-    } catch {
-      setNotifSettings(prev);
+  function handleEmailChange(value: boolean) {
+    setEmailDraft(value);
+    setSaveResult(null);
+  }
+
+  function handleReset() {
+    setDraft(null);
+    setEmailDraft(null);
+    setSaveResult(null);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setSaveResult(null);
+    let conditionOk = true;
+    let emailOk = true;
+
+    if (conditionDirty && draft) {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(draft));
+        setDraft(null); // 다시 렌더링되며 저장값(snapshot)을 새로 읽는다
+      } catch {
+        conditionOk = false;
+      }
     }
+
+    if (emailDirty && notifSettings && emailDraft !== null) {
+      const updated = { ...notifSettings, emailNotificationEnabled: emailDraft };
+      try {
+        await updateNotificationSettings(updated);
+        setNotifSettings(updated);
+        setEmailDraft(null);
+      } catch {
+        emailOk = false;
+      }
+    }
+
+    setSaveResult(
+      conditionOk && emailOk ? 'success'
+        : !conditionOk && !emailOk ? 'error-all'
+          : !conditionOk ? 'error-condition'
+            : 'error-email'
+    );
+    setSaving(false);
+  }
+
+  /* 저장 영역 안내 문구 */
+  let statusTone: SaveTone = 'neutral';
+  let statusMessage = dirty ? '저장하지 않은 변경 사항이 있어요.' : '변경 사항이 없어요.';
+  if (saving) statusMessage = '저장 중이에요.';
+  else if (saveResult === 'success') { statusTone = 'success'; statusMessage = '설정을 저장했어요.'; }
+  else if (saveResult === 'error-condition') { statusTone = 'error'; statusMessage = '검색 조건을 저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.'; }
+  else if (saveResult === 'error-email') { statusTone = 'error'; statusMessage = '이메일 알림 설정을 저장하지 못했어요. 다시 시도해 주세요.'; }
+  else if (saveResult === 'error-all') { statusTone = 'error'; statusMessage = '설정을 저장하지 못했어요. 다시 시도해 주세요.'; }
+
+  const pageDescription = '자주 찾는 공고 유형과 키워드를 저장해 두고, 공고 찾기에서 한 번에 불러오세요.';
+
+  if (!isLoggedIn) {
+    return (
+      <AccountLayout title="관심 조건 설정" description={pageDescription}>
+        <LoginRequired description="관심 조건은 로그인한 뒤 설정할 수 있어요." />
+      </AccountLayout>
+    );
   }
 
   return (
-    <div className="flex gap-6 items-start">
-      {/* ── 왼쪽 설정 폼 ── */}
-      <div className="flex-1 min-w-0 flex flex-col gap-6">
-        {/* 섹션 1: 페이지 제목 */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">관심 조건 설정</h1>
-          <p className="text-gray-500 mt-1 text-base">
-            설정한 조건은 공고 찾기에서 기본 필터로 적용돼요.
-          </p>
-        </div>
-
-        {/* 섹션 2: 설정 폼 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          {/* 항목 1: 공고 유형 */}
-          <FormField label="공고 유형">
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {BID_TYPES.map(({ code, label }) => (
-                <label key={code} className="flex items-center gap-2 cursor-pointer select-none">
-                  <Checkbox
-                    checked={condition.bidTypes.includes(code)}
-                    onCheckedChange={() => toggleBidType(code)}
-                    className="size-5"
-                  />
-                  <span className="text-base text-gray-700">{label}</span>
-                </label>
-              ))}
-            </div>
-          </FormField>
-
-          {/* 항목 3: 키워드 */}
-          <FormField label="키워드">
-            <Input
-              value={condition.keywords}
-              onChange={(e) => setCondition((c) => ({ ...c, keywords: e.target.value }))}
-              placeholder="예: 환경개선, 보수, 공사"
-              className="h-10 text-base max-w-lg"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              쉼표로 구분하여 여러 키워드를 입력할 수 있어요.
+    <AccountLayout title="관심 조건 설정" description={pageDescription}>
+      <form
+        className="flex flex-col gap-6"
+        onSubmit={(e) => { e.preventDefault(); if (dirty && !saving) handleSave(); }}
+      >
+        <SettingsSection
+          headingId="search-condition-heading"
+          title="검색 조건"
+          description={
+            <>
+              공고 찾기에서 <strong className="font-medium text-foreground">저장한 조건 적용</strong>을 누르면 이 조건으로 검색해요.
+              {' '}이 조건은 지금 쓰는 브라우저에만 저장되고, 로그아웃하면 지워져요. 이메일 알림 대상에는 쓰이지 않아요.
+            </>
+          }
+        >
+          {broken && (
+            <p role="alert" className="mb-4 rounded-lg bg-destructive-soft px-3 py-2 text-base text-destructive">
+              저장된 조건을 읽지 못해 기본값으로 표시했어요. 다시 저장하면 새로 저장돼요.
             </p>
-          </FormField>
-        </div>
+          )}
 
-        {/* 섹션 3: 저장 버튼 */}
-        <div className="mt-2">
-          <Button
-            onClick={handleSave}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-10 h-11 text-base"
-          >
-            설정 저장
-          </Button>
-        </div>
-
-        {/* 섹션 4: 마감 임박 알림 설정 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-base font-semibold text-gray-800">마감 임박 알림 받기</p>
-              <p className="text-sm text-gray-500 mt-1">
-                관심 공고 마감 임박 시 이메일로 알림을 받아요. (마이페이지에서 세부 설정 가능)
-              </p>
+          <fieldset aria-describedby="bidtype-help">
+            <legend className="text-base font-semibold text-foreground">공고 유형</legend>
+            <p id="bidtype-help" className="mt-0.5 text-base text-muted-foreground">
+              여러 개를 고를 수 있어요. 고르지 않으면 모든 유형으로 검색해요.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {BID_TYPES.map(({ code, label }) => {
+                const checked = condition.bidTypes.includes(code);
+                const id = `bidtype-${code}`;
+                return (
+                  <label
+                    key={code}
+                    htmlFor={id}
+                    className={cn(
+                      'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3.5 text-base select-none transition-colors',
+                      checked
+                        ? 'border-primary bg-accent font-semibold text-foreground'
+                        : 'border-border bg-card text-foreground hover:bg-muted'
+                    )}
+                  >
+                    <Checkbox
+                      id={id}
+                      checked={checked}
+                      onCheckedChange={() => toggleBidType(code)}
+                      className="size-5"
+                    />
+                    {label}
+                  </label>
+                );
+              })}
             </div>
-            {notifLoading ? (
-              <Skeleton className="h-5 w-10 flex-shrink-0" />
-            ) : (
-              <Switch
-                checked={notifSettings?.emailNotificationEnabled ?? false}
-                onCheckedChange={handleAlertToggle}
-              />
+          </fieldset>
+
+          <div className="mt-6">
+            <label htmlFor="condition-keywords" className="text-base font-semibold text-foreground">
+              검색 키워드
+            </label>
+            <Input
+              id="condition-keywords"
+              value={condition.keywords}
+              onChange={(e) => editCondition({ ...condition, keywords: e.target.value })}
+              placeholder="예: 유지보수"
+              aria-describedby="keywords-help"
+              className={cn(controlHeight, 'mt-2 max-w-lg bg-card px-3')}
+            />
+            <p id="keywords-help" className="mt-1.5 text-base text-muted-foreground">
+              공고명에 이 단어가 들어간 공고를 찾아요. 입력한 내용 전체를 한 덩어리로 검색해요.
+            </p>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          headingId="email-alert-heading"
+          title="마감 임박 이메일 알림"
+          description="위 검색 조건과는 관계없이, 관심 공고로 저장한 공고를 기준으로 발송돼요."
+        >
+          {notifLoad === 'loading' ? (
+            <div className="flex items-center justify-between gap-4 py-4" aria-hidden="true">
+              <div className="flex flex-1 flex-col gap-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-5 w-3/4" />
+              </div>
+              <Skeleton className="h-5 w-16" />
+            </div>
+          ) : notifLoad === 'error' ? (
+            <div role="alert" className="flex flex-col items-start gap-2 py-2">
+              <p className="text-base text-destructive">이메일 알림 설정을 불러오지 못했어요.</p>
+              <Button type="button" variant="outline" onClick={retryNotif} className={cn(controlHeight, 'px-4')}>
+                다시 시도
+              </Button>
+            </div>
+          ) : (
+            <SwitchRow
+              id="condition-email-enabled"
+              label="이메일 알림 받기"
+              description="검토중·준비중인 관심 공고의 마감이 다가오면 가입한 이메일로 알려드려요."
+              checked={emailValue}
+              onCheckedChange={handleEmailChange}
+              disabled={saving}
+            />
+          )}
+          <p className="border-t border-border pt-3 text-base text-muted-foreground">
+            받을 시점(D-3, D-1)은{' '}
+            <Link href="/mypage/notifications" className={cn('rounded-sm font-medium text-primary hover:underline', focusRing)}>
+              알림 설정
+            </Link>
+            에서 바꿀 수 있어요.
+          </p>
+        </SettingsSection>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex gap-2">
+            <Button type="submit" disabled={!dirty || saving} className={cn(controlHeight, 'px-8')}>
+              {saving ? '저장 중...' : '설정 저장'}
+            </Button>
+            {dirty && !saving && (
+              <Button type="button" variant="ghost" onClick={handleReset} className={cn(controlHeight, 'px-4')}>
+                되돌리기
+              </Button>
             )}
           </div>
+          <SaveStatus tone={statusTone} message={statusMessage} />
         </div>
-      </div>
-
-      {/* ── 오른쪽 보조 패널 ── */}
-      <div className="w-72 flex-shrink-0 flex flex-col gap-4">
-        {/* 패널 1: 현재 설정 미리보기 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 text-base mb-3">현재 설정</h3>
-          <div className="flex flex-col gap-3 text-sm">
-            <PreviewRow label="공고 유형">
-              <div className="flex flex-wrap gap-1 mt-0.5">
-                {condition.bidTypes.length > 0 ? (
-                  condition.bidTypes.map((code) => (
-                    <span
-                      key={code}
-                      className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium"
-                    >
-                      {bidTypeToKorean(code)}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-xs">미설정 (전체)</span>
-                )}
-              </div>
-            </PreviewRow>
-
-            <PreviewRow label="키워드">
-              {condition.keywords ? (
-                <span className="text-gray-700 break-all">{condition.keywords}</span>
-              ) : (
-                <span className="text-gray-400 text-xs">미설정</span>
-              )}
-            </PreviewRow>
-          </div>
-        </div>
-
-        {/* 패널 2: 설정 도움말 */}
-        <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
-          <h3 className="font-semibold text-blue-800 text-base mb-3">설정 도움말</h3>
-          <ul className="flex flex-col gap-2">
-            {[
-              '키워드는 공고명에서 검색됩니다.',
-              '저장된 조건은 공고 찾기의 기본 필터로 자동 적용돼요.',
-            ].map((tip) => (
-              <li key={tip} className="flex gap-2 text-sm text-blue-700">
-                <span className="flex-shrink-0 mt-0.5">•</span>
-                <span className="leading-relaxed">{tip}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* ── 저장 완료 토스트 ── */}
-      {showToast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-gray-900 px-5 py-3 text-base text-white shadow-lg whitespace-nowrap"
-        >
-          기본 검색 조건이 저장됐어요.
-        </div>
-      )}
-    </div>
+      </form>
+    </AccountLayout>
   );
 }

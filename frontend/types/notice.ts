@@ -135,23 +135,6 @@ export interface Notice {
   matchScore?: number;
 }
 
-export interface ChecklistItem {
-  id: string;
-  label: string;
-  done: boolean;
-  category: string;
-}
-
-export interface AlertItem {
-  id: string;
-  type: 'urgent' | 'new' | 'system';
-  title: string;
-  description: string;
-  createdAt: string;
-  isRead: boolean;
-  noticeId?: number;
-}
-
 export interface SearchCondition {
   bidTypes: string[];       // BidType 코드 배열 (예: ['CONSTRUCTION', 'SERVICE'])
   keywords: string;
@@ -209,9 +192,3 @@ export const WATCHLIST_STATUS_LABEL: Record<WatchlistStatus, string> = {
   SUBMITTED: '제출완료',
   DROPPED: '포기',
 };
-
-export interface SavedNotice extends Notice {
-  watchlistStatus: WatchlistStatus;
-  memo: string;
-  savedAt: string;
-}

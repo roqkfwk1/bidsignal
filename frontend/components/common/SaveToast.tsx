@@ -20,7 +20,7 @@ export function SaveToast({ show, onHide }: SaveToastProps) {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-5 py-3 text-base text-white shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200"
+      className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-foreground px-5 py-3 text-base text-background shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200"
     >
       관심 공고에 추가됐어요.
     </div>

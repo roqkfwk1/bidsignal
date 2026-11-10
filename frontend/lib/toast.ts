@@ -1,18 +1,19 @@
 import { toast } from 'sonner';
 
+/* 색은 globals.css 시맨틱 토큰을 참조 → 라이트/다크 모드 모두 토큰 값을 따른다 */
 const SUCCESS_STYLE = {
-  background: 'rgba(19, 160, 95, 0.12)',
-  color: '#065F46',
-  border: '1px solid rgba(19, 160, 95, 0.35)',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.10)',
+  background: 'var(--accent)',
+  color: 'var(--primary)',
+  border: '1px solid color-mix(in oklch, var(--primary) 30%, transparent)',
+  boxShadow: '0 2px 8px color-mix(in oklch, var(--foreground) 10%, transparent)',
   fontSize: '16px',
 } as const;
 
 const ERROR_STYLE = {
-  background: 'rgba(229, 57, 53, 0.10)',
-  color: '#991B1B',
-  border: '1px solid rgba(229, 57, 53, 0.30)',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.10)',
+  background: 'var(--destructive-soft)',
+  color: 'var(--destructive)',
+  border: '1px solid color-mix(in oklch, var(--destructive) 30%, transparent)',
+  boxShadow: '0 2px 8px color-mix(in oklch, var(--foreground) 10%, transparent)',
   fontSize: '16px',
 } as const;
 

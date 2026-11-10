@@ -1,11 +1,11 @@
 import { WatchlistStatus } from '@/types/notice';
 
+/* 관심 공고 상태 라벨 색 (globals.css 시맨틱 토큰). 라벨 텍스트(WATCHLIST_STATUS_LABEL)와 항상 함께 쓴다. */
 export const STATUS_COLOR: Record<WatchlistStatus, string> = {
-  REVIEWING: 'bg-gray-100 text-gray-700',
-  PREPARING: 'bg-blue-50 text-blue-800',
-  SUBMITTED: 'bg-green-100 text-green-800',
-  DROPPED: 'bg-red-100 text-red-800',
+  REVIEWING: 'bg-muted text-foreground',
+  PREPARING: 'bg-accent text-primary',
+  SUBMITTED: 'bg-primary text-primary-foreground',
+  DROPPED: 'bg-destructive-soft text-destructive',
 };
 
 export const DDAY_WARNING_THRESHOLD = 3;
-export const DDAY_DANGER_THRESHOLD = 1;

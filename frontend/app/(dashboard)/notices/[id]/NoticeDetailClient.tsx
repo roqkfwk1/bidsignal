@@ -3,9 +3,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Star, FileText, ExternalLink, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  Ban,
+  ChevronDown,
+  ExternalLink,
+  FileSearch,
+  FileText,
+  Sparkles,
+  Star,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -19,7 +29,7 @@ import {
 import { DDayBadge } from '@/components/common/DDayBadge';
 import { StatusDropdown } from '@/components/common/StatusDropdown';
 import { SaveToast } from '@/components/common/SaveToast';
-import { ApiErrorState } from '@/components/common/ApiErrorState';
+import { ResultsError } from '@/components/notices/NoticeResults';
 import { getNotice } from '@/lib/api/notices';
 import {
   getWatchlist,
@@ -34,6 +44,7 @@ import {
 import { ACCESS_TOKEN_KEY } from '@/lib/api';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import {
+  cn,
   computeDDay,
   formatIsoDate,
   formatWon,
@@ -51,30 +62,72 @@ interface Props {
   noticeId: number;
 }
 
+/* 백엔드 ErrorCode.NOTICE_NOT_FOUND 메시지. apiFetch가 HTTP 상태 코드를 전달하지 않아 메시지로 구분한다. */
+const NOTICE_NOT_FOUND_MESSAGE = '공고를 찾을 수 없습니다.';
 
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+const controlHeight = 'h-11 text-base md:text-base';
+const card = 'rounded-[10px] border border-border bg-card';
 
-/* ── 로딩 스켈레톤 ── */
+/* ── 표시 유틸 ── */
+/** ISO 일시 → "YYYY-MM-DD HH:mm". 시간이 없으면 날짜만, 값이 없으면 '-' */
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '-';
+  const [date, time] = iso.split('T');
+  if (!time) return date;
+  const hhmm = time.slice(0, 5);
+  return hhmm === '00:00' ? date : `${date} ${hhmm}`;
+}
+
+function hasValue(v: number | string | null | undefined): boolean {
+  return v != null && String(v).trim().length > 0;
+}
+
+/* ── 로딩 스켈레톤 (레이아웃과 같은 모양) ── */
 function DetailSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
-      <Skeleton className="h-5 w-24" />
-      <div className="flex items-start justify-between gap-4">
-        <Skeleton className="h-8 w-80" />
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-9 rounded-full" />
-          <Skeleton className="h-9 w-32 rounded-md" />
-        </div>
+    <div aria-busy="true" aria-label="공고 정보를 불러오는 중" className="flex flex-col gap-6">
+      <Skeleton className="h-6 w-40" />
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-9 w-full max-w-2xl" />
+        <Skeleton className="h-6 w-48" />
       </div>
-      <div className="flex gap-6">
-        <div className="flex-1 flex flex-col gap-5">
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="order-2 flex flex-col gap-5 lg:order-1">
+          <Skeleton className="h-40 w-full rounded-[10px]" />
+          <Skeleton className="h-72 w-full rounded-[10px]" />
         </div>
-        <div className="w-80 flex flex-col gap-4">
-          <Skeleton className="h-36 w-full rounded-xl" />
-          <Skeleton className="h-48 w-full rounded-xl" />
-        </div>
+        <Skeleton className="order-1 h-64 w-full rounded-[10px] lg:order-2" />
       </div>
+    </div>
+  );
+}
+
+function BackLink() {
+  return (
+    <Link
+      href="/notices"
+      className={cn(
+        'inline-flex min-h-11 items-center gap-1.5 self-start rounded-md text-base text-muted-foreground transition-colors hover:text-foreground',
+        focusRing,
+      )}
+    >
+      <ArrowLeft aria-hidden="true" className="size-4" />
+      공고 찾기로 돌아가기
+    </Link>
+  );
+}
+
+function NotFoundState() {
+  return (
+    <div className={cn(card, 'flex flex-col items-center gap-2 px-4 py-16 text-center')}>
+      <FileSearch aria-hidden="true" className="mb-1 size-10 text-muted-foreground" strokeWidth={1.5} />
+      <h1 className="text-lg font-medium text-foreground">공고를 찾을 수 없어요</h1>
+      <p className="text-base text-muted-foreground">삭제되었거나 주소가 잘못된 공고입니다.</p>
+      <Button asChild variant="outline" className={cn(controlHeight, 'mt-3 px-5')}>
+        <Link href="/notices">공고 찾기로 이동</Link>
+      </Button>
     </div>
   );
 }
@@ -82,9 +135,12 @@ function DetailSkeleton() {
 /* ── 메인 컴포넌트 ── */
 export function NoticeDetailClient({ noticeId }: Props) {
   const router = useRouter();
+  const isValidId = Number.isInteger(noticeId) && noticeId > 0;
+
   const [notice, setNotice]               = useState<NoticeDetail | null>(null);
-  const [loading, setLoading]             = useState(true);
+  const [loading, setLoading]             = useState(isValidId);
   const [fetchError, setFetchError]       = useState(false);
+  const [notFound, setNotFound]           = useState(!isValidId);
 
   const [isBookmarked, setIsBookmarked]       = useState(false);
   const [watchlistStatus, setWatchlistStatus] = useState<WatchlistStatus>('REVIEWING');
@@ -99,12 +155,14 @@ export function NoticeDetailClient({ noticeId }: Props) {
   const [newItemTitle, setNewItemTitle]     = useState('');
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab]   = useState('detail');
+  const [activeTab, setActiveTab]   = useState('info');
 
   useEffect(() => {
+    if (!isValidId) return;
     async function load() {
       setLoading(true);
       setFetchError(false);
+      setNotFound(false);
 
       /* 비로그인 상태에서 watchlist API를 호출하면 401 → 전역 login redirect 발생하므로 토큰이 있을 때만 호출 */
       const isLoggedIn = !!localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -114,7 +172,12 @@ export function NoticeDetailClient({ noticeId }: Props) {
       ]);
 
       if (noticeResult.status === 'rejected') {
-        setFetchError(true);
+        const reason: unknown = noticeResult.reason;
+        if (reason instanceof Error && reason.message === NOTICE_NOT_FOUND_MESSAGE) {
+          setNotFound(true);
+        } else {
+          setFetchError(true);
+        }
         setLoading(false);
         return;
       }
@@ -142,7 +205,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
       setLoading(false);
     }
     load();
-  }, [noticeId, refreshKey]);
+  }, [noticeId, refreshKey, isValidId]);
 
   const fetchChecklist = useCallback(async () => {
     setChecklistLoading(true);
@@ -254,17 +317,24 @@ export function NoticeDetailClient({ noticeId }: Props) {
     } catch { /* 실패 무시 */ }
   }
 
+  /* ── 상태별 화면 ── */
   if (loading) return <DetailSkeleton />;
+
+  if (notFound) {
+    return (
+      <div className="flex flex-col gap-4">
+        <BackLink />
+        <NotFoundState />
+      </div>
+    );
+  }
 
   if (fetchError || !notice) {
     return (
       <div className="flex flex-col gap-4">
-        <Link href="/notices" className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-base transition-colors">
-          <ArrowLeft className="size-4" /> 목록으로
-        </Link>
-        <div className="bg-white rounded-xl border border-gray-200">
-          <ApiErrorState onRetry={() => setRefreshKey((k) => k + 1)} />
-        </div>
+        <BackLink />
+        <h1 className="sr-only">공고 상세</h1>
+        <ResultsError onRetry={() => setRefreshKey((k) => k + 1)} />
       </div>
     );
   }
@@ -275,95 +345,291 @@ export function NoticeDetailClient({ noticeId }: Props) {
   const bidType  = bidTypeToKorean(notice.bidType);
   const { primary: bidMthdPrimary, detail: bidMthdDetail } = splitSucsfbidMthdNm(notice.sucsfbidMthdNm);
   const noticeNumber = notice.bidNtceOrd ? `${notice.bidNtceNo}-${notice.bidNtceOrd}` : notice.bidNtceNo;
+  const hasEvalRate  = hasValue(notice.techAbltEvlRt) && hasValue(notice.bidPrceEvlRt);
+  const agency       = notice.dminsttNm || notice.ntceInsttNm;
+  const attachments  = notice.attachments ?? [];
+
+  /* 공고 종류: 변경공고/취소공고만 표시 (등록공고·재공고 등 그 외 값은 표시하지 않음) */
+  const kind        = notice.ntceKindNm?.trim();
+  const isCancelled = kind === '취소공고';
+  const isChanged   = kind === '변경공고';
+  const ordText     = notice.bidNtceOrd?.trim() ? `차수 ${notice.bidNtceOrd.trim()}` : null;
+
+  const summary = notice.aiSummary?.trim() ? notice.aiSummary : null;
+
+  const originalLink = notice.bidNtceDtlUrl ? (
+    <Button asChild variant="outline" className={cn(controlHeight, 'w-full bg-card px-4')}>
+      <a href={notice.bidNtceDtlUrl} target="_blank" rel="noopener noreferrer">
+        <ExternalLink aria-hidden="true" className="size-4" />
+        공고 원문 보기
+        <span className="sr-only">(새 창)</span>
+      </a>
+    </Button>
+  ) : null;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ── 브레드크럼 + 공고명 헤더 ── */}
-      <div>
-        <Link
-          href="/notices"
-          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-base mb-4 transition-colors"
+    <div className="flex min-w-0 flex-col gap-6">
+      <BackLink />
+
+      {/* ── 취소공고 안내 ── */}
+      {isCancelled && (
+        <div
+          role="note"
+          className="flex items-start gap-3 rounded-[10px] border border-destructive/40 bg-destructive-soft px-4 py-3.5"
         >
-          <ArrowLeft className="size-4" />
-          목록으로
-        </Link>
-
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">{notice.bidNtceNm}</h1>
-
-          <div className="flex items-center gap-2 flex-shrink-0 mt-1">
-            {notice.bidNtceDtlUrl && (
-              <a
-                href={notice.bidNtceDtlUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="outline" className="gap-1.5">
-                  <ExternalLink className="size-4" />
-                  공고 원문 보기
-                </Button>
-              </a>
-            )}
-            <button
-              onClick={handleToggleSave}
-              aria-label={isBookmarked ? '관심 공고 해제' : '관심 공고 추가'}
-              className="hover:scale-110 transition-transform"
-            >
-              <Star
-                className={`size-6 transition-colors ${
-                  isBookmarked
-                    ? 'fill-yellow-400 text-yellow-400'
-                    : 'text-gray-300 hover:text-yellow-300'
-                }`}
-              />
-            </button>
+          <Ban aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <div className="min-w-0">
+            <p className="text-base font-bold text-destructive">취소공고</p>
+            <p className="text-base text-foreground">
+              이 공고는 취소공고입니다. 취소 사유와 이후 일정은 공고 원문에서 확인하세요.
+            </p>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ── 2열 레이아웃 ── */}
-      <div className="flex gap-6 items-start">
-        {/* ── 왼쪽 메인 ── */}
-        <div className="flex-1 min-w-0 flex flex-col gap-5">
-          {/* 섹션 1: 공고 기본 정보 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <InfoItem label="공고번호"  value={noticeNumber} />
-              <InfoItem label="공고기관"  value={notice.ntceInsttNm} />
-              <InfoItem label="수요기관"  value={notice.dminsttNm || '-'} />
-              <InfoItem label="게시일"    value={notice.bidNtceDt ? formatIsoDate(notice.bidNtceDt) : '-'} />
-              <InfoItem label="입찰방식"  value={notice.bidMethdNm || '-'} />
-              <InfoItem
-                label="낙찰방법"
-                value={bidMthdPrimary || '-'}
-                inlineDetail={bidMthdDetail}
-                detailTitle={notice.sucsfbidMthdNm ?? undefined}
-              />
-              <InfoItem label="예산금액"  value={amount} />
-              <InfoItem label="공고 유형" value={bidType} />
+      {/* ── 공고명 헤더 ── */}
+      <header className="flex min-w-0 flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground">
+          <span className="rounded-md border border-border px-1.5 leading-6">{bidType}</span>
+          <span className="tabular-nums wrap-anywhere">{noticeNumber}</span>
+          {isChanged && (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2 leading-7 font-medium text-foreground">
+              변경공고
+              {ordText && <span className="font-normal text-muted-foreground tabular-nums">· {ordText}</span>}
+            </span>
+          )}
+        </div>
+        <h1 className="text-[26px] leading-snug font-bold tracking-tight break-words text-foreground lg:text-[30px]">
+          {notice.bidNtceNm}
+        </h1>
+        <p className="text-base break-words text-muted-foreground">{agency}</p>
+      </header>
 
-              {/* 마감일 강조 */}
-              <div
-                className={`col-span-2 rounded-lg p-4 ${
-                  dDay !== null && dDay <= 3 ? 'bg-red-50' : dDay !== null && dDay <= 7 ? 'bg-orange-50' : 'bg-gray-50'
-                }`}
-              >
-                <p className="text-xs text-gray-500 mb-1">마감일</p>
-                <div className="flex items-center gap-3">
-                  <span className="text-base font-semibold text-gray-900">{deadline}</span>
-                  <DDayBadge dDay={dDay} deadline={deadline} />
-                </div>
-              </div>
+      {/* ── 본문 + 패널 ── */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start">
+        {/* 요약/행동 패널 — 모바일에선 제목 바로 아래 */}
+        <aside
+          aria-label="마감과 관심 공고"
+          className={cn(card, 'order-1 flex flex-col gap-4 p-5 lg:col-start-2 lg:row-start-1')}
+        >
+          <div>
+            <p className="text-base text-muted-foreground">마감까지</p>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3">
+              <span className="text-[28px] leading-tight font-bold tabular-nums [&>span]:text-[28px]">
+                <DDayBadge dDay={dDay} deadline={deadline} />
+              </span>
+              <span className="text-base text-foreground tabular-nums">{formatDateTime(notice.bidClseDt)}</span>
             </div>
           </div>
 
-          {/* 섹션 1-1: AI 요약 */}
-          <AiSummarySection summary={notice.aiSummary} />
+          <dl className="flex flex-col divide-y divide-border border-y border-border text-base">
+            <div className="flex items-baseline justify-between gap-3 py-2.5">
+              <dt className="shrink-0 text-muted-foreground">예산금액</dt>
+              <dd className="text-right font-medium text-foreground tabular-nums">{amount}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 py-2.5">
+              <dt className="shrink-0 text-muted-foreground">낙찰방법</dt>
+              <dd className="min-w-0 text-right">
+                <span className="block font-medium break-words text-foreground">{bidMthdPrimary || '-'}</span>
+                {hasEvalRate && (
+                  <span className="block text-muted-foreground tabular-nums">
+                    기술 {notice.techAbltEvlRt}% · 가격 {notice.bidPrceEvlRt}%
+                  </span>
+                )}
+              </dd>
+            </div>
+            {isBookmarked && checklist && (
+              <div className="flex items-baseline justify-between gap-3 py-2.5">
+                <dt className="shrink-0 text-muted-foreground">준비 진행률</dt>
+                <dd className="font-medium text-foreground tabular-nums">
+                  {checklist.checkedCount}/{checklist.totalCount}
+                  <span className="ml-1 font-normal text-muted-foreground">({checklist.progressRate}%)</span>
+                </dd>
+              </div>
+            )}
+          </dl>
 
-          {/* 섹션 2: 체크리스트 (관심공고 등록 시에만 표시) */}
+          <div className="flex flex-col gap-2">
+            {isBookmarked ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleToggleSave}
+                className={cn(controlHeight, 'w-full bg-card px-4')}
+              >
+                <Star aria-hidden="true" className="size-5 fill-primary text-primary" />
+                관심 공고 해제
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  onClick={handleToggleSave}
+                  className={cn(controlHeight, 'w-full px-4')}
+                >
+                  <Star aria-hidden="true" className="size-5" />
+                  관심 공고에 추가
+                </Button>
+                <p className="text-base leading-relaxed text-muted-foreground">
+                  저장하면 마감 임박 알림과 함께, 낙찰방법에 맞는 준비 체크리스트도 자동으로 만들어드려요.
+                </p>
+              </>
+            )}
+            {originalLink}
+          </div>
+        </aside>
+
+        {/* 관심 공고 관리 (저장한 경우) */}
+        {isBookmarked && (
+          <section
+            aria-labelledby="manage-heading"
+            className={cn(card, 'order-3 flex flex-col gap-4 p-5 lg:col-start-2 lg:row-start-2')}
+          >
+            <h2 id="manage-heading" className="text-base font-bold text-foreground">관심 공고 관리</h2>
+            <div>
+              <p id="status-label" className="mb-2 text-base text-muted-foreground">진행 상태</p>
+              <div role="group" aria-labelledby="status-label">
+                <StatusDropdown status={watchlistStatus} onChange={handleStatusChange} />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="notice-memo" className="mb-2 block text-base text-muted-foreground">메모</label>
+              <textarea
+                id="notice-memo"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                maxLength={200}
+                placeholder="이 공고에 대한 메모를 남겨보세요"
+                rows={4}
+                aria-describedby="notice-memo-count"
+                className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              />
+              <div className="mt-1.5 flex items-center justify-between">
+                <span id="notice-memo-count" className="text-base text-muted-foreground tabular-nums">
+                  {memo.length}/200
+                </span>
+                <Button onClick={handleMemoSave} disabled={memoSaving} className={cn(controlHeight, 'px-5')}>
+                  {memoSaving ? '저장 중...' : '메모 저장'}
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── 문서형 본문: AI 요약(있을 때) → 정보 탭 → 체크리스트(저장한 공고) ── */}
+        <div className="order-2 flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+          {summary && <AiSummarySection summary={summary} />}
+
+          {/* 정보 탭 */}
+          <div className={cn(card, 'overflow-hidden')}>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full gap-0">
+              {/*
+                가로 스크롤만 허용. TabsList 기본값(group-data-horizontal/tabs:h-8)이 h-auto보다 우선해 목록이 32px로 눌리고,
+                48px 탭과 밑줄(after:bottom-[-5px])이 아래로 넘쳐 세로 스크롤바(위아래 화살표)가 생기던 문제를 막는다.
+              */}
+              <div className="overflow-x-auto overflow-y-hidden border-b border-border px-2">
+                <TabsList variant="line" className="h-auto w-auto gap-0 bg-transparent p-0 group-data-horizontal/tabs:h-auto">
+                  <TabsTrigger value="info" className="h-12 rounded-none px-4 text-base sm:px-5 group-data-horizontal/tabs:after:bottom-0">공고 정보</TabsTrigger>
+                  <TabsTrigger value="files" className="h-12 rounded-none px-4 text-base sm:px-5 group-data-horizontal/tabs:after:bottom-0">
+                    첨부파일
+                    <span className="ml-1 text-muted-foreground tabular-nums">{attachments.length}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="qualifications" className="h-12 rounded-none px-4 text-base sm:px-5 group-data-horizontal/tabs:after:bottom-0">자격요건</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="info" className="p-5 text-base sm:p-6">
+                <dl className="grid gap-x-8 sm:grid-cols-2">
+                  <InfoItem label="공고번호" value={noticeNumber} />
+                  <InfoItem label="공고 유형" value={bidType} />
+                  <InfoItem label="공고기관" value={notice.ntceInsttNm || '-'} />
+                  <InfoItem label="수요기관" value={notice.dminsttNm || '-'} />
+                  <InfoItem label="입찰방식" value={notice.bidMethdNm || '-'} />
+                  <InfoItem label="계약방법" value={notice.cntrctCnclsMthdNm || '-'} />
+                  <InfoItem
+                    label="낙찰방법"
+                    value={bidMthdPrimary || '-'}
+                    detail={bidMthdDetail}
+                    className="sm:col-span-2"
+                  />
+                  {hasEvalRate && (
+                    <InfoItem
+                      label="평가비율"
+                      value={`기술 ${notice.techAbltEvlRt}% · 가격 ${notice.bidPrceEvlRt}%`}
+                    />
+                  )}
+                  <InfoItem label="예산금액" value={amount} />
+                  <InfoItem label="게시일" value={formatDateTime(notice.bidNtceDt)} />
+                  <InfoItem label="입찰 시작" value={formatDateTime(notice.bidBeginDt)} />
+                  <InfoItem label="입찰 마감" value={formatDateTime(notice.bidClseDt)} emphasize={dDay !== null && dDay >= 0 && dDay <= 3} />
+                  <InfoItem label="개찰일" value={formatDateTime(notice.opengDt)} />
+                </dl>
+                <p className="mt-5 text-base text-muted-foreground">
+                  공고 내용과 일정은 변경될 수 있어요. 입찰 전 공고 원문에서 최종 내용을 확인하세요.
+                </p>
+              </TabsContent>
+
+              <TabsContent value="files" className="p-5 text-base sm:p-6">
+                {attachments.length === 0 ? (
+                  <p className="py-4 text-center text-base text-muted-foreground">첨부파일이 없습니다.</p>
+                ) : (
+                  <ul className="flex flex-col divide-y divide-border">
+                    {attachments.map(({ id, fileName, fileUrl }) => (
+                      <li key={id} className="py-1 first:pt-0 last:pb-0">
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            'flex min-h-11 items-start gap-3 rounded-md py-2 text-base text-foreground hover:text-primary hover:underline',
+                            focusRing,
+                          )}
+                        >
+                          <FileText aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 wrap-anywhere">{fileName || '이름 없는 파일'}</span>
+                          <span className="sr-only">(새 창)</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </TabsContent>
+
+              <TabsContent value="qualifications" className="p-5 text-base sm:p-6">
+                <div className="flex flex-col items-center gap-4 py-6 text-center">
+                  <p className="text-base text-muted-foreground">
+                    자격요건은 첨부된 파일이나 공고 원문에서 확인하실 수 있어요.
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {attachments.length > 0 && (
+                      <Button
+                        variant="outline"
+                        className={cn(controlHeight, 'px-4')}
+                        onClick={() => setActiveTab('files')}
+                      >
+                        <FileText aria-hidden="true" className="size-4" />
+                        첨부파일 보기
+                      </Button>
+                    )}
+                    {notice.bidNtceDtlUrl && (
+                      <Button asChild variant="outline" className={cn(controlHeight, 'px-4')}>
+                        <a href={notice.bidNtceDtlUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink aria-hidden="true" className="size-4" />
+                          공고 원문 보기
+                          <span className="sr-only">(새 창)</span>
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* 체크리스트 (저장한 공고만) — 정보 탭 아래에 두어 저장 여부와 관계없이 탭 위치를 같게 한다 */}
           {isBookmarked && (
             checklistLoading ? (
-              <Skeleton className="h-48 w-full rounded-xl" />
+              <Skeleton aria-label="체크리스트를 불러오는 중" className="h-48 w-full rounded-[10px]" />
             ) : checklist ? (
               <ChecklistSection
                 checklist={checklist}
@@ -374,189 +640,6 @@ export function NoticeDetailClient({ noticeId }: Props) {
               />
             ) : null
           )}
-
-          {/* 섹션 3: 탭 */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full gap-0">
-              <div className="border-b border-gray-100 px-2 pt-1">
-                <TabsList variant="line" className="bg-transparent h-auto pb-0 gap-0 w-auto">
-                  {['detail', 'qualifications', 'files'].map((val, i) => (
-                    <TabsTrigger key={val} value={val} className="px-5 py-3 text-base rounded-none">
-                      {['상세내용', '자격요건', '첨부파일'][i]}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
-
-              <TabsContent value="detail" className="p-6 text-base">
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-900 text-base mb-2">사업 개요</h3>
-                  <p className="text-base text-gray-600 leading-relaxed">
-                    {notice.ntceKindNm || '상세 내용은 공고 원문을 확인하세요.'}
-                  </p>
-                </section>
-                {notice.reNtceYn === 'Y' && (
-                  <section className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                    <p className="text-sm text-amber-700 font-medium">이 공고는 정정된 공고입니다. 원문에서 변경 내용을 확인하세요.</p>
-                  </section>
-                )}
-              </TabsContent>
-
-              <TabsContent value="qualifications" className="p-6 text-base">
-                <div className="flex flex-col items-center gap-4 py-6">
-                  <p className="text-base text-gray-600 text-center">
-                    자격요건은 첨부된 파일에서 확인하실 수 있어요.
-                  </p>
-                  <div className="flex gap-2">
-                    {notice.attachments.length > 0 && (
-                      <Button
-                        variant="outline"
-                        className="gap-1.5"
-                        onClick={() => setActiveTab('files')}
-                      >
-                        <FileText className="size-4" />
-                        첨부파일 보기
-                      </Button>
-                    )}
-                    {notice.bidNtceDtlUrl && (
-                      <a
-                        href={notice.bidNtceDtlUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button variant="outline" className="gap-1.5">
-                          <ExternalLink className="size-4" />
-                          공고 원문 보기
-                        </Button>
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="files" className="p-6 text-base">
-                {notice.attachments.length === 0 ? (
-                  <p className="text-base text-gray-500 text-center py-4">첨부파일이 없습니다.</p>
-                ) : (
-                  <div className="flex flex-col divide-y divide-gray-100">
-                    {notice.attachments.map(({ id, fileName, fileUrl }) => (
-                      <div key={id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                        <FileText className="size-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                        <a
-                          href={fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-base text-blue-600 hover:text-blue-700 hover:underline break-all"
-                        >
-                          {fileName}
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-
-        {/* ── 오른쪽 보조 패널 ── */}
-        <div className="w-80 flex-shrink-0 flex flex-col gap-4">
-          {/* 패널 1: 관심 공고 액션 */}
-          {isBookmarked ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">진행 상태</p>
-                <StatusDropdown status={watchlistStatus} onChange={handleStatusChange} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">메모</p>
-                <textarea
-                  value={memo}
-                  onChange={(e) => setMemo(e.target.value)}
-                  maxLength={200}
-                  placeholder="이 공고에 대한 메모를 남겨보세요"
-                  rows={4}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-base text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <div className="flex justify-between items-center mt-1.5">
-                  <span className="text-xs text-gray-400">{memo.length}/200</span>
-                  <Button size="sm" onClick={handleMemoSave} disabled={memoSaving}>
-                    {memoSaving ? '저장 중...' : '저장'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <Button
-                onClick={handleToggleSave}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-base h-11"
-              >
-                + 관심 공고에 추가
-              </Button>
-              <p className="text-sm text-gray-500 mt-2 text-center leading-relaxed">
-                저장하면 마감 임박 알림과 함께, 낙찰방법에 맞는 준비 체크리스트도 자동으로 만들어드려요.
-              </p>
-            </div>
-          )}
-
-          {/* 패널 2: 핵심 정보 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h3 className="font-semibold text-gray-900 text-base mb-3">핵심 정보</h3>
-            <div className="flex flex-col">
-              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
-                <span className="text-gray-500">마감까지</span>
-                <DDayBadge dDay={dDay} deadline={deadline} />
-              </div>
-              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
-                <span className="text-gray-500">예산금액</span>
-                <span className="text-gray-900 font-medium">{amount}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 text-sm border-b border-gray-100">
-                <span className="text-gray-500">입찰방식</span>
-                <span className="text-gray-900 font-medium">{notice.bidMethdNm || '-'}</span>
-              </div>
-              <div className="flex justify-between items-start py-2 text-sm border-b border-gray-100">
-                <span className="text-gray-500 flex-shrink-0">낙찰방법</span>
-                <div className="flex flex-col items-end ml-2 min-w-0">
-                  <span className="text-gray-900 font-medium truncate max-w-[160px]">
-                    {bidMthdPrimary || '-'}
-                  </span>
-                  {notice.techAbltEvlRt != null &&
-                   String(notice.techAbltEvlRt).trim().length > 0 &&
-                   notice.bidPrceEvlRt != null &&
-                   String(notice.bidPrceEvlRt).trim().length > 0 && (
-                    <span className="text-xs text-gray-400 mt-0.5">
-                      기술 {notice.techAbltEvlRt}% · 가격 {notice.bidPrceEvlRt}%
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className={`flex justify-between items-center py-2 text-sm ${isBookmarked && checklist ? 'border-b border-gray-100' : ''}`}>
-                <span className="text-gray-500">공고 유형</span>
-                <span className="text-gray-900 font-medium">{bidType}</span>
-              </div>
-              {isBookmarked && checklist && (
-                <div className="flex justify-between items-center py-2 text-sm">
-                  <span className="text-gray-500">준비 진행률</span>
-                  <span className="text-gray-900 font-medium">
-                    {checklist.checkedCount}/{checklist.totalCount}
-                    <span className="ml-1 text-gray-500 font-normal">({checklist.progressRate}%)</span>
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 패널 3: 초보자 팁 */}
-          <div className="bg-amber-50 rounded-xl border border-amber-100 p-4">
-            <h3 className="font-semibold text-amber-800 text-base mb-2">초보자 팁</h3>
-            <p className="text-sm text-amber-700 leading-relaxed">
-              마감일 3일 전까지 서류를 준비해두는 것을 권장합니다.
-              <br />
-              궁금한 점은 발주기관에 직접 문의하세요.
-            </p>
-          </div>
         </div>
       </div>
 
@@ -567,17 +650,16 @@ export function NoticeDetailClient({ noticeId }: Props) {
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>로그인이 필요해요</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg">로그인이 필요해요</DialogTitle>
+            <DialogDescription className="text-base">
               관심 공고를 저장하려면 로그인이 필요합니다.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowLoginModal(false)}>취소</Button>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => router.push('/login')}
-            >
+            <Button variant="outline" onClick={() => setShowLoginModal(false)} className={cn(controlHeight, 'px-5')}>
+              취소
+            </Button>
+            <Button onClick={() => router.push('/login')} className={cn(controlHeight, 'px-5')}>
               로그인하러 가기
             </Button>
           </DialogFooter>
@@ -590,69 +672,61 @@ export function NoticeDetailClient({ noticeId }: Props) {
 function InfoItem({
   label,
   value,
-  inlineDetail,
-  detailTitle,
+  detail,
+  emphasize = false,
+  className,
 }: {
   label: string;
   value: string;
-  inlineDetail?: string | null;
-  detailTitle?: string;
+  detail?: string | null;
+  emphasize?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="min-w-0">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p
-        className={`text-base font-medium text-gray-900${inlineDetail ? ' truncate' : ''}`}
-        title={detailTitle}
-      >
+    <div className={cn('min-w-0 border-b border-border py-3', className)}>
+      <dt className="text-base text-muted-foreground">{label}</dt>
+      <dd className={cn('mt-0.5 text-base font-medium break-words', emphasize ? 'text-destructive' : 'text-foreground')}>
         {value}
-        {inlineDetail && inlineDetail !== value && (
-          <span className="ml-1.5 text-xs font-normal text-gray-400">({inlineDetail})</span>
+        {detail && detail !== value && (
+          <span className="mt-0.5 block font-normal text-muted-foreground">{detail}</span>
         )}
-      </p>
+      </dd>
     </div>
   );
 }
 
-function AiSummarySection({ summary }: { summary: string | null }) {
+function AiSummarySection({ summary }: { summary: string }) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <section aria-labelledby="ai-summary-heading" className={cn(card, 'p-5 sm:p-6')}>
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-gray-900 text-base flex items-center gap-1.5">
-          <Sparkles className="size-4 text-blue-600" />
-          AI 요약
-        </h3>
-        {summary && (
-          <button
-            type="button"
-            onClick={() => setIsExpanded((prev) => !prev)}
-            aria-label={isExpanded ? 'AI 요약 접기' : 'AI 요약 펼치기'}
-            className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-          </button>
-        )}
+        <h2 id="ai-summary-heading" className="flex items-center gap-1.5 text-base font-bold text-foreground">
+          <Sparkles aria-hidden="true" className="size-4 text-primary" />
+          공고문 AI 요약
+        </h2>
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          aria-expanded={isExpanded}
+          aria-controls="ai-summary-body"
+          aria-label={isExpanded ? 'AI 요약 접기' : 'AI 요약 펼치기'}
+          className={cn(
+            'flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
+            focusRing,
+          )}
+        >
+          <ChevronDown aria-hidden="true" className={cn('size-5 transition-transform', isExpanded && 'rotate-180')} />
+        </button>
       </div>
 
-      {summary ? (
-        isExpanded && (
-          <div className="mt-3">
-            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
-              {summary}
-            </p>
-            <p className="text-xs text-gray-400 mt-3">
-              AI가 생성한 요약이며, 정확한 내용은 공고 원문을 확인하세요.
-            </p>
-          </div>
-        )
-      ) : (
-        <p className="text-sm text-gray-500 mt-3">
-          요약 준비 중입니다. 잠시 후 다시 확인해주세요.
+      <div id="ai-summary-body" hidden={!isExpanded} className="mt-2">
+        <p className="text-base leading-relaxed whitespace-pre-line break-words text-foreground">{summary}</p>
+        <p className="mt-3 text-base text-muted-foreground">
+          AI가 생성한 요약이며, 정확한 내용은 공고 원문을 확인하세요.
         </p>
-      )}
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -674,95 +748,110 @@ function ChecklistSection({
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <section aria-labelledby="checklist-heading" className={cn(card, 'p-5 sm:p-6')}>
       {/* 헤더 — 항상 표시 */}
       <div className="mb-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold text-gray-900 text-base">{checklist.templateTitle}</h3>
+          <h2 id="checklist-heading" className="min-w-0 text-base font-bold break-words text-foreground">
+            {checklist.templateTitle}
+          </h2>
           <button
             type="button"
             onClick={() => setIsExpanded((prev) => !prev)}
+            aria-expanded={isExpanded}
+            aria-controls="checklist-body"
             aria-label={isExpanded ? '체크리스트 접기' : '체크리스트 펼치기'}
-            className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            className={cn(
+              'flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
+              focusRing,
+            )}
           >
-            {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            <ChevronDown aria-hidden="true" className={cn('size-5 transition-transform', isExpanded && 'rotate-180')} />
           </button>
         </div>
         {checklist.guideMessage && (
-          <p className="text-sm text-gray-500 mt-1">{checklist.guideMessage}</p>
+          <p className="mt-1 text-base text-muted-foreground">{checklist.guideMessage}</p>
         )}
       </div>
 
       {/* 진행률 — 항상 표시 */}
-      <div className={isExpanded ? 'mb-5' : ''}>
-        <div className="flex justify-between items-center mb-1.5">
-          <span className="text-sm text-gray-600">준비 진행률</span>
-          <span className="text-sm font-semibold text-gray-900">
+      <div className={isExpanded ? 'mb-4' : ''}>
+        <div className="mb-1.5 flex items-center justify-between">
+          <span id="checklist-progress-label" className="text-base text-muted-foreground">준비 진행률</span>
+          <span className="text-base font-semibold text-foreground tabular-nums">
             {checklist.checkedCount}/{checklist.totalCount}
-            <span className="ml-1 text-gray-500 font-normal">({checklist.progressRate}%)</span>
+            <span className="ml-1 font-normal text-muted-foreground">({checklist.progressRate}%)</span>
           </span>
         </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          role="progressbar"
+          aria-labelledby="checklist-progress-label"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={checklist.progressRate}
+          className="h-1.5 overflow-hidden rounded-full bg-muted"
+        >
           <div
-            className="h-full bg-blue-600 rounded-full transition-all duration-300"
+            className="h-full rounded-full bg-primary transition-all duration-300"
             style={{ width: `${checklist.progressRate}%` }}
           />
         </div>
       </div>
 
       {/* 항목 목록 + 추가 입력창 — 접으면 숨김 */}
-      {isExpanded && (
-        <>
-          {checklist.totalCount === 0 ? (
-            <p className="text-base text-gray-500 text-center py-4">체크리스트 항목이 없습니다.</p>
-          ) : (
-            <div className="flex flex-col">
-              {checklist.items.map((item) => (
-                <label
-                  key={item.id}
-                  className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-gray-50 rounded-lg px-2 -mx-2"
-                >
+      <div id="checklist-body" hidden={!isExpanded}>
+        {checklist.totalCount === 0 ? (
+          <p className="py-4 text-center text-base text-muted-foreground">체크리스트 항목이 없습니다.</p>
+        ) : (
+          <ul className="flex flex-col">
+            {checklist.items.map((item) => (
+              <li key={item.id}>
+                <label className="-mx-2 flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent/60">
                   <input
                     type="checkbox"
                     checked={item.checked}
                     onChange={() => onToggle(item.id, !item.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                    className={cn('size-5 shrink-0 cursor-pointer accent-primary', focusRing)}
                   />
                   <span
-                    className={`text-base flex-1 ${
-                      item.checked ? 'line-through text-gray-400' : 'text-gray-800'
-                    }`}
+                    className={cn(
+                      'min-w-0 flex-1 text-base break-words',
+                      item.checked ? 'text-muted-foreground line-through' : 'text-foreground',
+                    )}
                   >
                     {item.title}
                   </span>
                   {!item.defaultItem && (
-                    <span className="text-xs text-gray-400 flex-shrink-0">직접 추가</span>
+                    <span className="shrink-0 text-base text-muted-foreground">직접 추가</span>
                   )}
                 </label>
-              ))}
-            </div>
-          )}
+              </li>
+            ))}
+          </ul>
+        )}
 
-          <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-            <input
-              type="text"
-              value={newItemTitle}
-              onChange={(e) => onNewItemTitleChange(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') onAdd(); }}
-              placeholder="항목을 입력하세요"
-              maxLength={100}
-              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <Button
-              onClick={onAdd}
-              disabled={!newItemTitle.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
-            >
-              추가
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onAdd();
+          }}
+          className="mt-4 flex gap-2 border-t border-border pt-4"
+        >
+          <label htmlFor="checklist-new-item" className="sr-only">체크리스트 항목 추가</label>
+          <Input
+            id="checklist-new-item"
+            type="text"
+            value={newItemTitle}
+            onChange={(e) => onNewItemTitleChange(e.target.value)}
+            placeholder="항목을 입력하세요"
+            maxLength={100}
+            className={cn(controlHeight, 'min-w-0 flex-1 bg-card')}
+          />
+          <Button type="submit" disabled={!newItemTitle.trim()} className={cn(controlHeight, 'shrink-0 px-5')}>
+            추가
+          </Button>
+        </form>
+      </div>
+    </section>
   );
 }

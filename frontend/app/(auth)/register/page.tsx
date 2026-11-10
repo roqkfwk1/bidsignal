@@ -1,11 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Zap, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AuthShell,
+  Field,
+  FieldError,
+  FormAlert,
+  PasswordInput,
+  controlHeight,
+  fieldDescribedBy,
+  focusRing,
+  inputClass,
+} from '@/components/auth/AuthForm';
 import { cn } from '@/lib/utils';
 import { signup } from '@/lib/api/auth';
 
@@ -38,18 +49,29 @@ function parseApiError(msg: string): Partial<FormErrors> {
 }
 
 export default function RegisterPage() {
-  const [name, setName]                 = useState('');
-  const [userId, setUserId]             = useState('');
-  const [password, setPassword]         = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [phone, setPhone]               = useState('');
-  const [agreed, setAgreed]             = useState(false);
-  const [submitting, setSubmitting]     = useState(false);
-  const [errors, setErrors]             = useState<FormErrors>(EMPTY_ERRORS);
-  const [success, setSuccess]           = useState(false);
+  const [name, setName]             = useState('');
+  const [userId, setUserId]         = useState('');
+  const [password, setPassword]     = useState('');
+  const [phone, setPhone]           = useState('');
+  const [agreed, setAgreed]         = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors]         = useState<FormErrors>(EMPTY_ERRORS);
+  const [success, setSuccess]       = useState(false);
+
+  const nameRef     = useRef<HTMLInputElement>(null);
+  const userIdRef   = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const agreeRef    = useRef<HTMLButtonElement>(null);
 
   function clearFieldError(field: keyof FormErrors) {
     setErrors((e) => ({ ...e, [field]: '' }));
+  }
+
+  function focusFirstError(errs: Partial<FormErrors>) {
+    if (errs.name) nameRef.current?.focus();
+    else if (errs.userId) userIdRef.current?.focus();
+    else if (errs.password) passwordRef.current?.focus();
+    else if (errs.agreed) agreeRef.current?.focus();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -76,7 +98,10 @@ export default function RegisterPage() {
     }
 
     setErrors(next);
-    if (hasError) return;
+    if (hasError) {
+      focusFirstError(next);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -84,183 +109,131 @@ export default function RegisterPage() {
       setSuccess(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
-      setErrors((e) => ({ ...e, ...parseApiError(msg) }));
+      const mapped = parseApiError(msg);
+      setErrors((e) => ({ ...e, ...mapped }));
+      focusFirstError(mapped);
     } finally {
       setSubmitting(false);
     }
   }
 
-  return (
-    <div className="w-full max-w-lg px-4">
-      {/* 로고 */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <Zap className="size-5 text-blue-600 fill-blue-600" />
-        <span className="text-xl font-bold text-blue-600 tracking-tight">BidSignal</span>
-      </div>
-
-      {/* 카드 */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-        {success ? (
-          /* ── 가입 완료 화면 ── */
-          <div className="flex flex-col items-center gap-4 py-6 text-center">
-            <CheckCircle2 className="size-16 text-green-500" strokeWidth={1.5} />
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">회원가입이 완료되었습니다!</h2>
-              <p className="text-base text-gray-500 mt-2">
-                로그인하고 BidSignal을 시작해보세요.
-              </p>
-            </div>
-            <Button
-              asChild
-              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold mt-2"
-            >
-              <Link href="/login">로그인하기</Link>
-            </Button>
+  if (success) {
+    return (
+      <AuthShell title="회원가입 완료" description="계정이 만들어졌어요.">
+        <div role="status" className="flex flex-col items-center gap-4 py-4 text-center">
+          <CheckCircle2 aria-hidden="true" className="size-14 text-primary" strokeWidth={1.5} />
+          <div>
+            <p className="text-lg font-bold text-foreground">회원가입이 완료되었습니다!</p>
+            <p className="mt-1 text-base text-muted-foreground">로그인하고 BidSignal을 시작해보세요.</p>
           </div>
-        ) : (
-          /* ── 회원가입 폼 ── */
-          <>
-            <h2 className="text-xl font-bold text-gray-900 mb-1">회원가입</h2>
-            <p className="text-sm text-gray-500 mb-6">간단한 정보를 입력하면 됩니다.</p>
+          <Button asChild className={cn(controlHeight, 'mt-2 w-full font-semibold')}>
+            <Link href="/login">로그인하기</Link>
+          </Button>
+        </div>
+      </AuthShell>
+    );
+  }
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-              {/* 서버 에러 배너 */}
-              {errors.server && (
-                <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                  {errors.server}
-                </div>
-              )}
+  return (
+    <AuthShell
+      title="회원가입"
+      description="간단한 정보로 계정을 만들 수 있어요."
+      footer={
+        <p className="text-base text-muted-foreground">
+          이미 계정이 있으신가요?{' '}
+          <Link href="/login" className={cn('rounded-sm font-medium text-primary hover:underline', focusRing)}>
+            로그인
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        {errors.server && <FormAlert message={errors.server} />}
 
-              {/* 이름 */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="name" className="text-sm font-medium text-gray-700">이름</label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
-                  placeholder="이름을 입력하세요"
-                  className={cn('h-11 text-base', errors.name && 'border-red-500 focus-visible:ring-red-300')}
-                  autoComplete="name"
-                />
-                {errors.name && (
-                  <p className="text-sm text-red-500" role="alert">{errors.name}</p>
-                )}
-              </div>
+        <Field id="name" label="이름" error={errors.name}>
+          <Input
+            ref={nameRef}
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
+            placeholder="이름을 입력하세요"
+            autoComplete="name"
+            aria-invalid={!!errors.name || undefined}
+            aria-describedby={fieldDescribedBy('name', { error: errors.name })}
+            className={inputClass(!!errors.name)}
+          />
+        </Field>
 
-              {/* 이메일 */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="userId" className="text-sm font-medium text-gray-700">이메일</label>
-                <Input
-                  id="userId"
-                  type="email"
-                  value={userId}
-                  onChange={(e) => { setUserId(e.target.value); clearFieldError('userId'); }}
-                  placeholder="이메일을 입력하세요"
-                  className={cn('h-11 text-base', errors.userId && 'border-red-500 focus-visible:ring-red-300')}
-                  autoComplete="email"
-                />
-                {errors.userId && (
-                  <p className="text-sm text-red-500" role="alert">{errors.userId}</p>
-                )}
-              </div>
+        <Field id="userId" label="이메일" hint="로그인 아이디로 쓰이고, 마감 임박 알림 메일도 이 주소로 발송돼요." error={errors.userId}>
+          <Input
+            ref={userIdRef}
+            id="userId"
+            type="email"
+            value={userId}
+            onChange={(e) => { setUserId(e.target.value); clearFieldError('userId'); }}
+            placeholder="name@company.com"
+            autoComplete="email"
+            aria-invalid={!!errors.userId || undefined}
+            aria-describedby={fieldDescribedBy('userId', { hint: true, error: errors.userId })}
+            className={inputClass(!!errors.userId)}
+          />
+        </Field>
 
-              {/* 비밀번호 */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="password" className="text-sm font-medium text-gray-700">비밀번호</label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
-                    placeholder="8자 이상 입력하세요"
-                    className={cn('h-11 text-base pr-11', errors.password && 'border-red-500 focus-visible:ring-red-300')}
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                  >
-                    {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-red-500" role="alert">{errors.password}</p>
-                )}
-              </div>
+        <Field id="password" label="비밀번호" hint="8자 이상 입력하세요." error={errors.password}>
+          <PasswordInput
+            ref={passwordRef}
+            id="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
+            placeholder="비밀번호를 입력하세요"
+            autoComplete="new-password"
+            invalid={!!errors.password}
+            aria-describedby={fieldDescribedBy('password', { hint: true, error: errors.password })}
+          />
+        </Field>
 
-              {/* 휴대폰 번호 (선택) */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                  휴대폰 번호{' '}
-                  <span className="font-normal text-gray-400">(선택)</span>
-                </label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="010-0000-0000 (선택사항)"
-                  className="h-11 text-base"
-                  autoComplete="tel"
-                  inputMode="numeric"
-                />
-              </div>
+        <Field id="phone" label="휴대폰 번호" optional hint="입력하지 않아도 가입할 수 있어요.">
+          <Input
+            id="phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="010-0000-0000"
+            autoComplete="tel"
+            inputMode="numeric"
+            aria-describedby={fieldDescribedBy('phone', { hint: true })}
+            className={inputClass(false)}
+          />
+        </Field>
 
-              {/* 이용약관 동의 */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="agree"
-                    checked={agreed}
-                    onCheckedChange={(v) => { setAgreed(!!v); clearFieldError('agreed'); }}
-                    className={cn('size-4 mt-0.5 flex-shrink-0', errors.agreed && 'border-red-500')}
-                  />
-                  <label
-                    htmlFor="agree"
-                    className="text-sm text-gray-700 leading-relaxed cursor-pointer select-none"
-                  >
-                    이용약관 및 개인정보 처리방침에 동의합니다.{' '}
-                    <button
-                      type="button"
-                      onClick={() => alert('준비 중입니다.')}
-                      className="text-blue-600 hover:text-blue-700 font-medium underline underline-offset-2"
-                    >
-                      약관 보기
-                    </button>
-                  </label>
-                </div>
-                {errors.agreed && (
-                  <p className="text-sm text-red-500 ml-6" role="alert">{errors.agreed}</p>
-                )}
-              </div>
+        {/* 이용약관 동의 */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              ref={agreeRef}
+              id="agree"
+              checked={agreed}
+              onCheckedChange={(v) => { setAgreed(!!v); clearFieldError('agreed'); }}
+              aria-invalid={!!errors.agreed || undefined}
+              aria-describedby={errors.agreed ? 'agree-error' : undefined}
+              className="mt-0.5 size-5"
+            />
+            <label htmlFor="agree" className="cursor-pointer text-base leading-relaxed text-foreground select-none">
+              이용약관 및 개인정보 처리방침에 동의합니다. <span className="text-muted-foreground">(필수)</span>
+            </label>
+          </div>
+          {errors.agreed && (
+            <div className="pl-8">
+              <FieldError id="agree-error" message={errors.agreed} />
+            </div>
+          )}
+        </div>
 
-              {/* 회원가입 버튼 */}
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold mt-1"
-              >
-                {submitting ? '가입 중...' : '회원가입'}
-              </Button>
-            </form>
-
-            {/* 로그인 안내 */}
-            <p className="text-sm text-center mt-6 text-gray-500">
-              이미 계정이 있으신가요?{' '}
-              <Link
-                href="/login"
-                className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
-              >
-                로그인
-              </Link>
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+        <Button type="submit" disabled={submitting} className={cn(controlHeight, 'mt-1 w-full font-semibold')}>
+          {submitting ? '가입 중...' : '회원가입'}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

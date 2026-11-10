@@ -1,5 +1,4 @@
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Header } from '@/components/layout/Header';
+import { TopNav } from '@/components/layout/TopNav';
 import { NotificationProvider } from '@/lib/context/NotificationContext';
 
 export default function DashboardLayout({
@@ -9,12 +8,15 @@ export default function DashboardLayout({
 }) {
   return (
     <NotificationProvider>
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
-        <div className="ml-[220px] flex flex-col flex-1">
-          <Header />
-          <main className="mt-14 p-6 flex-1 overflow-y-auto">{children}</main>
-        </div>
+      <div className="flex min-h-screen flex-col bg-background">
+        <TopNav />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-content flex-1 px-4 pt-6 pb-16 focus:outline-none sm:px-6 lg:px-7 lg:pt-10 lg:pb-24"
+        >
+          {children}
+        </main>
       </div>
     </NotificationProvider>
   );

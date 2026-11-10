@@ -24,7 +24,8 @@ export default function RootLayout({
     <html lang="ko" className={`${notoSansKR.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
-        <Toaster position="top-center" offset={{ top: 72 }} />
+        {/* 상단 메뉴 높이: lg 이상 약 65px, lg 미만 약 105px(로고 줄 56 + 메뉴 줄 48 + 테두리). 두 경우 모두 겹치지 않도록 120px */}
+        <Toaster position="top-center" offset={{ top: 120 }} mobileOffset={{ top: 120 }} />
       </body>
     </html>
   );
