@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useSyncExternalStore, Suspense } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronDown, MoreHorizontal, StickyNote } from 'lucide-react';
@@ -48,6 +48,7 @@ import { WATCHLIST_STATUS_LABEL } from '@/types/notice';
 import type { WatchlistItem, WatchlistStatus } from '@/types/notice';
 import { cn } from '@/lib/utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import { useIsLoggedIn } from '@/lib/hooks/useIsLoggedIn';
 
 /* ────────────────────────────────────────────────────────── */
 /* Types & constants                                           */
@@ -86,18 +87,6 @@ function parseActiveOnly(raw: string | null): boolean {
 }
 
 const ACTIVE_STATUSES: readonly WatchlistStatus[] = ['REVIEWING', 'PREPARING'];
-
-/* 로그인 상태 — localStorage → React */
-function subscribeAuthChange(callback: () => void) {
-  window.addEventListener('storage', callback);
-  window.addEventListener('authchange', callback);
-  return () => {
-    window.removeEventListener('storage', callback);
-    window.removeEventListener('authchange', callback);
-  };
-}
-const getIsLoggedInSnapshot = () => !!localStorage.getItem(ACCESS_TOKEN_KEY);
-const getIsLoggedInServerSnapshot = () => true; /* SSR에선 로딩 화면을 그리도록 로그인으로 가정 */
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 const controlHeight = 'h-11 text-base md:text-base';
@@ -595,7 +584,8 @@ function PageTitle() {
 function WatchlistContent() {
   useRequireAuth();
   const searchParams = useSearchParams();
-  const isLoggedIn = useSyncExternalStore(subscribeAuthChange, getIsLoggedInSnapshot, getIsLoggedInServerSnapshot);
+  /* SSR에선 로딩 화면을 그리도록 로그인으로 가정 */
+  const isLoggedIn = useIsLoggedIn(true);
 
   const [items, setItems]                   = useState<WatchlistItem[]>([]);
   const [loading, setLoading]               = useState(true);

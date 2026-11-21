@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bell, CircleHelp, CircleUserRound } from 'lucide-react';
-import { ACCESS_TOKEN_KEY } from '@/lib/api';
+import { useIsLoggedIn } from '@/lib/hooks/useIsLoggedIn';
 import { useNotification } from '@/lib/context/NotificationContext';
 import { cn } from '@/lib/utils';
 
@@ -22,25 +22,6 @@ const NAV_ITEMS: readonly NavItem[] = [
   { href: '/settings/conditions', label: '관심 조건 설정' },
 ];
 
-/* ── 로그인 상태: localStorage → React. lib/api/auth.ts가 로그인/로그아웃 시 'authchange'를 발생시킨다. ── */
-function subscribeAuthChange(callback: () => void) {
-  window.addEventListener('storage', callback);
-  window.addEventListener('authchange', callback);
-  return () => {
-    window.removeEventListener('storage', callback);
-    window.removeEventListener('authchange', callback);
-  };
-}
-
-function getIsLoggedInSnapshot(): boolean {
-  return !!localStorage.getItem(ACCESS_TOKEN_KEY);
-}
-
-/* 서버 렌더링 및 하이드레이션 시점에는 로그아웃 상태로 그린다. */
-function getIsLoggedInServerSnapshot(): boolean {
-  return false;
-}
-
 function isActivePath(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -52,11 +33,8 @@ const focusRing =
 export function TopNav() {
   const pathname = usePathname();
   const { unreadCount } = useNotification();
-  const isLoggedIn = useSyncExternalStore(
-    subscribeAuthChange,
-    getIsLoggedInSnapshot,
-    getIsLoggedInServerSnapshot,
-  );
+  /* 서버 렌더링 및 하이드레이션 시점에는 로그아웃 상태로 그린다. */
+  const isLoggedIn = useIsLoggedIn(false);
   const navRef = useRef<HTMLUListElement>(null);
 
   /* 모바일 가로 스크롤 메뉴에서 현재 메뉴가 화면 밖에 있으면 보이도록 스크롤 */

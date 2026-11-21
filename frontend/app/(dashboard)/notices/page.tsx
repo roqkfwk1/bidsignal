@@ -35,6 +35,7 @@ import { getWatchlist, saveWatchlist, deleteWatchlist } from '@/lib/api/watchlis
 import { ACCESS_TOKEN_KEY } from '@/lib/api';
 import { cn, bidTypeToKorean } from '@/lib/utils';
 import type { NoticeListItem, NoticeSearchParams, SearchCondition } from '@/types/notice';
+import { useIsLoggedIn, subscribeAuthChange } from '@/lib/hooks/useIsLoggedIn';
 
 /* ────────────────────────────────────────────────────────── */
 /* Types                                                       */
@@ -45,23 +46,8 @@ const LS_KEY = 'bidsignal_conditions';
 
 /* ────────────────────────────────────────────────────────── */
 /* useSyncExternalStore helpers — localStorage → React state  */
+/* subscribeAuthChange는 로그인 여부뿐 아니라 저장된 조건(아래) 구독에도 그대로 재사용한다. */
 /* ────────────────────────────────────────────────────────── */
-function subscribeAuthChange(callback: () => void) {
-  window.addEventListener('storage', callback);
-  window.addEventListener('authchange', callback);
-  return () => {
-    window.removeEventListener('storage', callback);
-    window.removeEventListener('authchange', callback);
-  };
-}
-
-function getIsLoggedInSnapshot(): boolean {
-  return !!localStorage.getItem(ACCESS_TOKEN_KEY);
-}
-
-function getIsLoggedInServerSnapshot(): boolean {
-  return false;
-}
 
 let cachedSavedConditionRaw: string | null = null;
 let cachedSavedConditionParsed: SearchCondition | null = null;
@@ -249,11 +235,8 @@ export default function NoticesPage() {
   const [showToast, setShowToast]               = useState(false);
   const [showLoginModal, setShowLoginModal]     = useState(false);
   const [filtersOpen, setFiltersOpen]           = useState(false);
-  const isLoggedIn = useSyncExternalStore(
-    subscribeAuthChange,
-    getIsLoggedInSnapshot,
-    getIsLoggedInServerSnapshot,
-  );
+  /* 서버 렌더링 및 하이드레이션 시점에는 로그아웃 상태로 그린다. */
+  const isLoggedIn = useIsLoggedIn(false);
 
   const savedCondition = useSyncExternalStore(
     subscribeAuthChange,
