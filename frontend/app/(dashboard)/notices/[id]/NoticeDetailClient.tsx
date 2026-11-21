@@ -624,9 +624,14 @@ export function NoticeDetailClient({ noticeId }: Props) {
           </div>
 
           {/* 공고 정보 출처 안내 — 탭과 무관하게 항상 표시 */}
-          <p className="text-base text-muted-foreground">
-            공고 정보는 나라장터 등의 공공 데이터를 수집한 것으로, 정정이나 취소가 늦게 반영될 수 있어요. 입찰 전에 공고 원문을 확인하세요.
-          </p>
+          <div>
+            <p className="text-base text-muted-foreground">
+              공고 정보는 나라장터 등의 공공 데이터를 수집한 것으로, 정정이나 취소가 늦게 반영될 수 있어요. 입찰 전에 공고 원문을 확인하세요.
+            </p>
+            <p className="mt-1 text-base text-muted-foreground">
+              출처: 조달청 나라장터, 공공데이터포털(data.go.kr)
+            </p>
+          </div>
 
           {/* 체크리스트 (저장한 공고만) — 정보 탭 아래에 두어 저장 여부와 관계없이 탭 위치를 같게 한다 */}
           {isBookmarked && (
