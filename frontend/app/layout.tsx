@@ -11,8 +11,17 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://bidsignal.kr"),
   title: "BidSignal — 공공입찰 공고 관리",
   description: "오늘 놓치면 안 되는 입찰 공고를 한눈에 관리하세요.",
+  openGraph: {
+    title: "BidSignal — 공공입찰 공고 관리",
+    description: "오늘 놓치면 안 되는 입찰 공고를 한눈에 관리하세요.",
+    url: "https://bidsignal.kr",
+    siteName: "BidSignal",
+    locale: "ko_KR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
