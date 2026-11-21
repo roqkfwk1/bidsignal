@@ -22,7 +22,7 @@ import {
   focusRing,
 } from '@/components/account/AccountLayout';
 import { HELP_EMAIL } from '@/components/auth/AuthForm';
-import { cn, formatPhoneNumber } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { logout, getMyInfo, deleteAccount } from '@/lib/api/auth';
 import { getWatchlist } from '@/lib/api/watchlist';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
@@ -139,11 +139,6 @@ export default function MyPage() {
               <dl className="-my-3 divide-y divide-border">
                 <InfoRow label="닉네임">{user?.nickname || '-'}</InfoRow>
                 <InfoRow label="이메일">{user?.email || '-'}</InfoRow>
-                <InfoRow label="휴대폰 번호">
-                  {user?.phoneNumber
-                    ? formatPhoneNumber(user.phoneNumber)
-                    : <span className="text-muted-foreground">등록하지 않음</span>}
-                </InfoRow>
                 <InfoRow label="관심 공고">
                   {watchlistCount === null ? (
                     <span className="text-muted-foreground">불러오지 못함</span>

@@ -8,7 +8,11 @@ const PAGE_SIZE = 200;
 const MAX_URLS = 45000;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes: MetadataRoute.Sitemap = [{ url: `${BASE_URL}/notices` }];
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: `${BASE_URL}/notices` },
+    { url: `${BASE_URL}/privacy` },
+    { url: `${BASE_URL}/terms` },
+  ];
 
   const noticeRoutes: MetadataRoute.Sitemap = [];
   const noticeLimit = MAX_URLS - staticRoutes.length;

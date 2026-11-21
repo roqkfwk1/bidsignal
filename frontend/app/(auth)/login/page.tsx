@@ -100,6 +100,14 @@ export default function LoginPage() {
             </span>{' '}
             문의해 주세요.
           </p>
+          <p className="flex items-center justify-center gap-2 text-muted-foreground">
+            <Link href="/terms" target="_blank" rel="noopener noreferrer" className={cn('rounded-sm hover:text-foreground hover:underline', focusRing)}>
+              이용약관
+            </Link>
+            <Link href="/privacy" target="_blank" rel="noopener noreferrer" className={cn('rounded-sm hover:text-foreground hover:underline', focusRing)}>
+              개인정보 처리방침
+            </Link>
+          </p>
         </div>
       }
     >

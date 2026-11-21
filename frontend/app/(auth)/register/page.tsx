@@ -24,11 +24,19 @@ interface FormErrors {
   name: string;
   userId: string;
   password: string;
-  agreed: string;
+  agreedTerms: string;
+  agreedPrivacy: string;
   server: string;
 }
 
-const EMPTY_ERRORS: FormErrors = { name: '', userId: '', password: '', agreed: '', server: '' };
+const EMPTY_ERRORS: FormErrors = {
+  name: '',
+  userId: '',
+  password: '',
+  agreedTerms: '',
+  agreedPrivacy: '',
+  server: '',
+};
 
 /**
  * 백엔드 에러 메시지를 폼 필드에 매핑.
@@ -49,19 +57,20 @@ function parseApiError(msg: string): Partial<FormErrors> {
 }
 
 export default function RegisterPage() {
-  const [name, setName]             = useState('');
-  const [userId, setUserId]         = useState('');
-  const [password, setPassword]     = useState('');
-  const [phone, setPhone]           = useState('');
-  const [agreed, setAgreed]         = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors]         = useState<FormErrors>(EMPTY_ERRORS);
-  const [success, setSuccess]       = useState(false);
+  const [name, setName]                 = useState('');
+  const [userId, setUserId]             = useState('');
+  const [password, setPassword]         = useState('');
+  const [agreedTerms, setAgreedTerms]     = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [submitting, setSubmitting]     = useState(false);
+  const [errors, setErrors]             = useState<FormErrors>(EMPTY_ERRORS);
+  const [success, setSuccess]           = useState(false);
 
   const nameRef     = useRef<HTMLInputElement>(null);
   const userIdRef   = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const agreeRef    = useRef<HTMLButtonElement>(null);
+  const termsRef    = useRef<HTMLButtonElement>(null);
+  const privacyRef  = useRef<HTMLButtonElement>(null);
 
   function clearFieldError(field: keyof FormErrors) {
     setErrors((e) => ({ ...e, [field]: '' }));
@@ -71,7 +80,8 @@ export default function RegisterPage() {
     if (errs.name) nameRef.current?.focus();
     else if (errs.userId) userIdRef.current?.focus();
     else if (errs.password) passwordRef.current?.focus();
-    else if (errs.agreed) agreeRef.current?.focus();
+    else if (errs.agreedTerms) termsRef.current?.focus();
+    else if (errs.agreedPrivacy) privacyRef.current?.focus();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -92,8 +102,12 @@ export default function RegisterPage() {
       next.password = '비밀번호를 입력해주세요.';
       hasError = true;
     }
-    if (!agreed) {
-      next.agreed = '이용약관에 동의해주세요.';
+    if (!agreedTerms) {
+      next.agreedTerms = '이용약관에 동의해주세요.';
+      hasError = true;
+    }
+    if (!agreedPrivacy) {
+      next.agreedPrivacy = '개인정보 수집 및 이용에 동의해주세요.';
       hasError = true;
     }
 
@@ -105,7 +119,7 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      await signup(userId.trim(), password, name.trim(), phone.trim() || undefined);
+      await signup(userId.trim(), password, name.trim());
       setSuccess(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
@@ -193,41 +207,78 @@ export default function RegisterPage() {
           />
         </Field>
 
-        <Field id="phone" label="휴대폰 번호" optional hint="입력하지 않아도 가입할 수 있어요.">
-          <Input
-            id="phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="010-0000-0000"
-            autoComplete="tel"
-            inputMode="numeric"
-            aria-describedby={fieldDescribedBy('phone', { hint: true })}
-            className={inputClass(false)}
-          />
-        </Field>
-
         {/* 이용약관 동의 */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-start gap-3">
             <Checkbox
-              ref={agreeRef}
-              id="agree"
-              checked={agreed}
-              onCheckedChange={(v) => { setAgreed(!!v); clearFieldError('agreed'); }}
-              aria-invalid={!!errors.agreed || undefined}
-              aria-describedby={errors.agreed ? 'agree-error' : undefined}
+              ref={termsRef}
+              id="agree-terms"
+              checked={agreedTerms}
+              onCheckedChange={(v) => { setAgreedTerms(!!v); clearFieldError('agreedTerms'); }}
+              aria-invalid={!!errors.agreedTerms || undefined}
+              aria-describedby={errors.agreedTerms ? 'agree-terms-error' : undefined}
               className="mt-0.5 size-5"
             />
-            <label htmlFor="agree" className="cursor-pointer text-base leading-relaxed text-foreground select-none">
-              이용약관 및 개인정보 처리방침에 동의합니다. <span className="text-muted-foreground">(필수)</span>
+            <label htmlFor="agree-terms" className="cursor-pointer text-base leading-relaxed text-foreground select-none">
+              <Link
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={cn('rounded-sm font-medium text-primary hover:underline', focusRing)}
+              >
+                이용약관
+              </Link>
+              에 동의합니다. <span className="text-muted-foreground">(필수)</span>
             </label>
           </div>
-          {errors.agreed && (
+          {errors.agreedTerms && (
             <div className="pl-8">
-              <FieldError id="agree-error" message={errors.agreed} />
+              <FieldError id="agree-terms-error" message={errors.agreedTerms} />
             </div>
           )}
+        </div>
+
+        {/* 개인정보 수집·이용 동의 */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              ref={privacyRef}
+              id="agree-privacy"
+              checked={agreedPrivacy}
+              onCheckedChange={(v) => { setAgreedPrivacy(!!v); clearFieldError('agreedPrivacy'); }}
+              aria-invalid={!!errors.agreedPrivacy || undefined}
+              aria-describedby={errors.agreedPrivacy ? 'agree-privacy-error' : undefined}
+              className="mt-0.5 size-5"
+            />
+            <label htmlFor="agree-privacy" className="cursor-pointer text-base leading-relaxed text-foreground select-none">
+              개인정보 수집 및 이용에 동의합니다. <span className="text-muted-foreground">(필수)</span>
+            </label>
+          </div>
+          {errors.agreedPrivacy && (
+            <div className="pl-8">
+              <FieldError id="agree-privacy-error" message={errors.agreedPrivacy} />
+            </div>
+          )}
+
+          {/* 개인정보 수집 안내 */}
+          <div className="ml-8 rounded-[10px] bg-muted px-4 py-3.5 text-base text-muted-foreground">
+            <p>수집 항목: 이름, 이메일, 비밀번호</p>
+            <p>이용 목적: 회원 식별, 마감 알림 메일 발송</p>
+            <p>보유 기간: 회원 탈퇴 시까지</p>
+            <p className="mt-1.5">
+              동의를 거부할 수 있으며, 거부하면 회원가입이 제한됩니다. 자세한 내용은{' '}
+              <Link
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn('font-medium text-primary hover:underline', focusRing)}
+              >
+                개인정보 처리방침
+              </Link>
+              을 확인해주세요.
+            </p>
+          </div>
         </div>
 
         <Button type="submit" disabled={submitting} className={cn(controlHeight, 'mt-1 w-full font-semibold')}>

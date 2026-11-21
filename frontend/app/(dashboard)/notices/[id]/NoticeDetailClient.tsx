@@ -564,9 +564,6 @@ export function NoticeDetailClient({ noticeId }: Props) {
                   <InfoItem label="입찰 마감" value={formatDateTime(notice.bidClseDt)} emphasize={dDay !== null && dDay >= 0 && dDay <= 3} />
                   <InfoItem label="개찰일" value={formatDateTime(notice.opengDt)} />
                 </dl>
-                <p className="mt-5 text-base text-muted-foreground">
-                  공고 내용과 일정은 변경될 수 있어요. 입찰 전 공고 원문에서 최종 내용을 확인하세요.
-                </p>
               </TabsContent>
 
               <TabsContent value="files" className="p-5 text-base sm:p-6">
@@ -625,6 +622,11 @@ export function NoticeDetailClient({ noticeId }: Props) {
               </TabsContent>
             </Tabs>
           </div>
+
+          {/* 공고 정보 출처 안내 — 탭과 무관하게 항상 표시 */}
+          <p className="text-base text-muted-foreground">
+            공고 정보는 나라장터 등의 공공 데이터를 수집한 것으로, 정정이나 취소가 늦게 반영될 수 있어요. 입찰 전에 공고 원문을 확인하세요.
+          </p>
 
           {/* 체크리스트 (저장한 공고만) — 정보 탭 아래에 두어 저장 여부와 관계없이 탭 위치를 같게 한다 */}
           {isBookmarked && (
@@ -720,11 +722,12 @@ function AiSummarySection({ summary }: { summary: string }) {
         </button>
       </div>
 
+      <p className="mt-1 text-base text-muted-foreground">
+        AI가 공고문을 요약한 참고용 내용이며 부정확하거나 누락이 있을 수 있어요. 입찰 전에 공고 원문을 꼭 확인하세요.
+      </p>
+
       <div id="ai-summary-body" hidden={!isExpanded} className="mt-2">
         <p className="text-base leading-relaxed whitespace-pre-line break-words text-foreground">{summary}</p>
-        <p className="mt-3 text-base text-muted-foreground">
-          AI가 생성한 요약이며, 정확한 내용은 공고 원문을 확인하세요.
-        </p>
       </div>
     </section>
   );
