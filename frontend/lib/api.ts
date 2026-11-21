@@ -1,5 +1,15 @@
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+const isProd = process.env.NODE_ENV === 'production';
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+/* 배포 환경(NODE_ENV=production)에서 NEXT_PUBLIC_API_URL을 빠뜨리면 localhost로 조용히
+   넘어가지 않도록 로그만 남긴다. 빌드/실행을 막지는 않음 — BASE_URL이 빈 문자열이 되어
+   이후 fetch가 상대경로로 요청되면서(예: '/notices/5') 바로 눈에 보이게 실패한다. */
+if (isProd && !configuredApiUrl) {
+  console.error('[BidSignal] NEXT_PUBLIC_API_URL이 설정되지 않았습니다. 배포 환경에서는 이 값이 반드시 필요합니다.');
+}
+
+/* 개발 환경에서만 localhost를 기본값으로 쓴다 (기존 로컬 개발 동작 유지). */
+export const BASE_URL = configuredApiUrl || (isProd ? '' : 'http://localhost:8080/api');
 
 const ACCESS_TOKEN_KEY  = 'bidsignal_access_token';
 const REFRESH_TOKEN_KEY = 'bidsignal_refresh_token';
