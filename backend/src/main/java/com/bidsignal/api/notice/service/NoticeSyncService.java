@@ -10,11 +10,11 @@ import com.bidsignal.api.notice.dto.response.NoticeSyncResponse;
 import com.bidsignal.api.notice.external.nara.NaraBidNoticeClient;
 import com.bidsignal.api.notice.external.nara.dto.NaraBidNoticeItem;
 import com.bidsignal.api.notice.external.nara.dto.NaraBidNoticeResponse;
-import com.bidsignal.api.notice.repository.NoticeAttachmentRepository;
 import com.bidsignal.api.notice.repository.NoticeRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -38,7 +38,7 @@ public class NoticeSyncService {
 
     private final NaraBidNoticeClient naraBidNoticeClient;
     private final NoticeRepository noticeRepository;
-    private final NoticeAttachmentRepository noticeAttachmentRepository;
+    private final NoticeSaveService noticeSaveService;
     private final SchedulerStatusTracker schedulerStatusTracker;
 
     /**
@@ -143,14 +143,10 @@ public class NoticeSyncService {
                     continue;
                 }
 
-                Notice notice = toNotice(item, bidType);
-                noticeRepository.save(notice);
-                savedCount++;
-
-                List<NoticeAttachment> attachments = extractAttachments(item, notice);
-
-                if (!attachments.isEmpty()) {
-                    noticeAttachmentRepository.saveAll(attachments);
+                if (trySaveNotice(item, bidType)) {
+                    savedCount++;
+                } else {
+                    skippedCount++;
                 }
             }
 
@@ -164,6 +160,27 @@ public class NoticeSyncService {
         }
 
         return new NoticeSyncResponse(fetchedCount, savedCount, skippedCount);
+    }
+
+    /**
+     * 공고 1건을 저장하고 저장 여부를 반환한다.
+     */
+    private boolean trySaveNotice(NaraBidNoticeItem item, BidType bidType) {
+
+        Notice notice = toNotice(item, bidType);
+        List<NoticeAttachment> attachments = extractAttachments(item, notice);
+
+        try {
+            noticeSaveService.saveNotice(notice, attachments);
+            return true;
+        } catch (DataIntegrityViolationException e) {
+            if (!noticeRepository.existsByBidNtceNoAndBidNtceOrd(item.getBidNtceNo(), item.getBidNtceOrd())) {
+                throw e;
+            }
+
+            log.info("이미 저장된 공고 건너뜀. bidNtceNo={}, bidNtceOrd={}", item.getBidNtceNo(), item.getBidNtceOrd());
+            return false;
+        }
     }
 
     /**

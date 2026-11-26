@@ -27,6 +27,8 @@ import java.time.LocalDateTime;
 @Getter
 public class Notice extends BaseEntity {
 
+    public static final String CANCELED_NTCE_KIND_NM = "취소공고";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -107,6 +109,9 @@ public class Notice extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String aiSummary;   // AI 생성 공고 요약
 
+    @Column(name = "is_latest", nullable = false)
+    private boolean latest;     // 최신 차수 여부
+
     @Builder
     private Notice(
             String bidNtceNo,
@@ -160,9 +165,18 @@ public class Notice extends BaseEntity {
         this.bidPrceEvlRt = bidPrceEvlRt;
         this.bidNtceDtlUrl = bidNtceDtlUrl;
         this.stdNtceDocUrl = stdNtceDocUrl;
+        this.latest = true;
     }
 
     public void updateAiSummary(String aiSummary) {
         this.aiSummary = aiSummary;
+    }
+
+    public void updateLatest(boolean latest) {
+        this.latest = latest;
+    }
+
+    public boolean isCanceled() {
+        return CANCELED_NTCE_KIND_NM.equals(ntceKindNm);
     }
 }

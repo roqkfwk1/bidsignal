@@ -39,7 +39,22 @@ public class NoticeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
 
         List<NoticeAttachment> attachments = noticeAttachmentRepository.findByNoticeId(id);
+        List<Notice> versions = noticeRepository.findByBidNtceNoOrderByBidNtceOrdAsc(notice.getBidNtceNo());
 
-        return NoticeDetailResponse.from(notice, attachments);
+        return NoticeDetailResponse.from(notice, attachments, findLatestNotice(notice, versions), versions);
+    }
+
+    /**
+     * 차수 이력에서 최신 차수 공고를 찾는다.
+     */
+    private Notice findLatestNotice(Notice notice, List<Notice> versions) {
+
+        for (Notice version : versions) {
+            if (version.isLatest()) {
+                return version;
+            }
+        }
+
+        return notice;
     }
 }

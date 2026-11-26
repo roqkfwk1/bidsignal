@@ -1,0 +1,34 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  mail:
+    host: localhost
+    port: 25
+    username: test@example.com
+    password: test
+
+nara:
+  api:
+    key: test-key
+    base-url: http://localhost
+
+jwt:
+  secret: "test-jwt-secret-key-for-integration-test-only-0123456789"
+  access-token-expiration-ms: 900000
+  refresh-token-expiration-ms: 604800000
+
+app:
+  frontend-base-url: http://localhost:3000
+  cors:
+    allowed-origins: http://localhost:3000
+
+gemini:
+  api:
+    key: test-key
+    url: http://localhost

@@ -20,13 +20,18 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>, NoticeRep
     // 공고번호 + 차수 존재 여부 확인
     boolean existsByBidNtceNoAndBidNtceOrd(String bidNtceNo, String bidNtceOrd);
 
-    // 마감 전 공고 중 요약이 없는 공고를 마감이 가까운 순으로 조회
+    // 공고번호별 차수 이력 조회
+    List<Notice> findByBidNtceNoOrderByBidNtceOrdAsc(String bidNtceNo);
+
+    // 마감 전 최신 공고 중 요약이 없는 공고를 마감이 가까운 순으로 조회
     @Query("""
             select n from Notice n
             where n.aiSummary is null
               and n.stdNtceDocUrl is not null
               and n.stdNtceDocUrl <> ''
               and n.bidClseDt >= :now
+              and n.latest = true
+              and (n.ntceKindNm is null or n.ntceKindNm <> '취소공고')
             order by n.bidClseDt asc
             """)
     List<Notice> findSummaryTargets(@Param("now") LocalDateTime now, Pageable pageable);

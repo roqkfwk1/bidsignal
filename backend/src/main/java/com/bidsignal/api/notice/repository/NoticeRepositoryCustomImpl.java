@@ -43,7 +43,9 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                         maxAmountLoe(request.getMaxAmt()),
                         deadlineFromGoe(request.getBidClseDateFrom()),
                         deadlineToLoe(request.getBidClseDateTo()),
-                        notExpired(request.getIncludeExpired(), now)
+                        notExpired(request.getIncludeExpired(), now),
+                        latestOnly(),
+                        notCanceled()
                 )
                 .orderBy(toOrderSpecifiers(pageable.getSort(), request.getIncludeExpired(), now))
                 .offset(pageable.getOffset())
@@ -60,7 +62,9 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
                         maxAmountLoe(request.getMaxAmt()),
                         deadlineFromGoe(request.getBidClseDateFrom()),
                         deadlineToLoe(request.getBidClseDateTo()),
-                        notExpired(request.getIncludeExpired(), now)
+                        notExpired(request.getIncludeExpired(), now),
+                        latestOnly(),
+                        notCanceled()
                 )
                 .fetchOne();
 
@@ -165,6 +169,15 @@ public class NoticeRepositoryCustomImpl implements NoticeRepositoryCustom {
         }
 
         return notice.bidClseDt.loe(to.atTime(LocalTime.MAX));
+    }
+
+    private BooleanExpression latestOnly() {
+        return notice.latest.isTrue();
+    }
+
+    private BooleanExpression notCanceled() {
+        return notice.ntceKindNm.isNull()
+                .or(notice.ntceKindNm.ne(Notice.CANCELED_NTCE_KIND_NM));
     }
 
     private BooleanExpression notExpired(Boolean includeExpired, LocalDateTime now) {

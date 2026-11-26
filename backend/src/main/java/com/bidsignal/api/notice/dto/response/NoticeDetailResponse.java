@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -40,12 +41,22 @@ public class NoticeDetailResponse {
     private String bidNtceDtlUrl;
     private String aiSummary;
     private List<NoticeAttachmentResponse> attachments;
+    private boolean latest;
+    private Long latestNoticeId;
+    private boolean canceled;
+    private List<NoticeVersionResponse> versions;
 
-    public static NoticeDetailResponse from(Notice notice, List<NoticeAttachment> attachments) {
+    public static NoticeDetailResponse from(Notice notice, List<NoticeAttachment> attachments, Notice latestNotice, List<Notice> versions) {
 
         List<NoticeAttachmentResponse> attachmentResponses = attachments.stream()
                 .map(NoticeAttachmentResponse::from)
                 .toList();
+
+        List<NoticeVersionResponse> versionResponses = new ArrayList<>();
+
+        for (Notice version : versions) {
+            versionResponses.add(NoticeVersionResponse.from(version));
+        }
 
         return NoticeDetailResponse.builder()
                 .id(notice.getId())
@@ -75,6 +86,10 @@ public class NoticeDetailResponse {
                 .bidNtceDtlUrl(notice.getBidNtceDtlUrl())
                 .aiSummary(notice.getAiSummary())
                 .attachments(attachmentResponses)
+                .latest(notice.isLatest())
+                .latestNoticeId(latestNotice.getId())
+                .canceled(latestNotice.isCanceled())
+                .versions(versionResponses)
                 .build();
     }
 }
