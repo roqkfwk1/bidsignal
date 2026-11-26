@@ -82,6 +82,9 @@ tasks.named('test') {
 	useJUnitPlatform {
 		excludeTags 'integration'
 	}
+	testLogging {
+		events 'passed', 'skipped', 'failed'
+	}
 }
 
 // QueryDSL Q-class 생성 위치
