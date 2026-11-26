@@ -63,11 +63,14 @@ public class WatchlistService {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
 
-        if (watchlistItemRepository.existsByUserIdAndNoticeId(userId, noticeId)) {
+        if (watchlistItemRepository.existsByUserIdAndNoticeBidNtceNo(userId, notice.getBidNtceNo())) {
             throw new BusinessException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
         }
 
-        WatchlistItem watchlistItem = WatchlistItem.create(user, notice);
+        Notice latestNotice = noticeRepository.findFirstByBidNtceNoAndLatestTrueOrderByBidNtceOrdDesc(notice.getBidNtceNo())
+                .orElse(notice);
+
+        WatchlistItem watchlistItem = WatchlistItem.create(user, latestNotice);
         WatchlistItem savedWatchlistItem = watchlistItemRepository.save(watchlistItem);
 
         checklistService.createDefaultChecklistItems(savedWatchlistItem);

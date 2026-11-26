@@ -1,6 +1,7 @@
 package com.bidsignal.api.notification.domain;
 
 import com.bidsignal.api.global.domain.BaseEntity;
+import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.user.domain.User;
 import com.bidsignal.api.watchlist.domain.WatchlistItem;
 import jakarta.persistence.*;
@@ -26,6 +27,10 @@ public class NotificationHistory extends BaseEntity {
     @JoinColumn(name = "watchlist_item_id", nullable = false)
     private WatchlistItem watchlistItem;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "notice_id", nullable = false)
+    private Notice notice;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private NotificationChannel channel;
@@ -43,11 +48,12 @@ public class NotificationHistory extends BaseEntity {
     private boolean isRead;
 
     // 성공 이력 생성
-    public static NotificationHistory createSuccess(User user, WatchlistItem watchlistItem, NotificationChannel channel, int remainingDays) {
+    public static NotificationHistory createSuccess(User user, WatchlistItem watchlistItem, Notice notice, NotificationChannel channel, int remainingDays) {
         NotificationHistory history = new NotificationHistory();
 
         history.user = user;
         history.watchlistItem = watchlistItem;
+        history.notice = notice;
         history.channel = channel;
         history.remainingDays = remainingDays;
         history.success = true;
@@ -56,11 +62,12 @@ public class NotificationHistory extends BaseEntity {
     }
 
     // 실패 이력 생성
-    public static NotificationHistory createFailure(User user, WatchlistItem watchlistItem, NotificationChannel channel, int remainingDays, String errorMessage) {
+    public static NotificationHistory createFailure(User user, WatchlistItem watchlistItem, Notice notice, NotificationChannel channel, int remainingDays, String errorMessage) {
         NotificationHistory history = new NotificationHistory();
 
         history.user = user;
         history.watchlistItem = watchlistItem;
+        history.notice = notice;
         history.channel = channel;
         history.remainingDays = remainingDays;
         history.success = false;

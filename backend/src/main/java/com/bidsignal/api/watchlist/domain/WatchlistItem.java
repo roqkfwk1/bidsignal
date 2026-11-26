@@ -14,7 +14,8 @@ import lombok.NoArgsConstructor;
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_watchlist_items_user_id_notice_id",
                 columnNames = {"user_id", "notice_id"}
-        )
+        ),
+        indexes = @Index(name = "idx_watchlist_items_notice_id", columnList = "notice_id")
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
@@ -53,5 +54,9 @@ public class WatchlistItem extends BaseEntity {
 
     public void updateMemo(String memo) {
         this.memo = memo;
+    }
+
+    public void updateNotice(Notice notice) {
+        this.notice = notice;
     }
 }

@@ -27,6 +27,7 @@ public class WatchlistListResponse {
     private LocalDateTime bidClseDt;
     private WatchlistStatus status;
     private String memo;
+    private boolean canceled;
     @JsonProperty("dDay")
     private Long dDay;
 
@@ -57,6 +58,7 @@ public class WatchlistListResponse {
                 .bidClseDt(notice.getBidClseDt())
                 .status(watchlistItem.getStatus())
                 .memo(watchlistItem.getMemo())
+                .canceled(notice.isCanceled())
                 .dDay(calculateDDay(notice.getBidClseDt()))
                 .checklistTotalCount(totalCount)
                 .checklistCheckedCount(checkedCount)

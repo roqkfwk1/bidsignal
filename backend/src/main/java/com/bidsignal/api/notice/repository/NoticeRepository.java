@@ -23,6 +23,9 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>, NoticeRep
     // 공고번호별 차수 이력 조회
     List<Notice> findByBidNtceNoOrderByBidNtceOrdAsc(String bidNtceNo);
 
+    // 공고번호의 최신 차수 조회
+    Optional<Notice> findFirstByBidNtceNoAndLatestTrueOrderByBidNtceOrdDesc(String bidNtceNo);
+
     // 마감 전 최신 공고 중 요약이 없는 공고를 마감이 가까운 순으로 조회
     @Query("""
             select n from Notice n

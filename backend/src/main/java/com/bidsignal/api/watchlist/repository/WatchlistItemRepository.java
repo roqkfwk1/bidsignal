@@ -18,15 +18,18 @@ public interface WatchlistItemRepository extends JpaRepository<WatchlistItem, Lo
     @Query("SELECT w FROM WatchlistItem w JOIN FETCH w.notice WHERE w.user.id = :userId")
     List<WatchlistItem> findByUserIdWithNotice(@Param("userId") Long userId);
 
-    // 중복 저장 방지
-    boolean existsByUserIdAndNoticeId(Long userId, Long noticeId);
+    // 같은 공고번호 중복 저장 방지
+    boolean existsByUserIdAndNoticeBidNtceNo(Long userId, String bidNtceNo);
 
-    // 사용자 + 공고로 단건 조회
-    @Query("SELECT w FROM WatchlistItem w JOIN FETCH w.notice WHERE w.user.id = :userId AND w.notice.id = :noticeId")
+    // 여러 공고의 관심 공고 조회 (먼저 담은 순)
+    List<WatchlistItem> findByNoticeIdInOrderByIdAsc(List<Long> noticeIds);
+
+    // 사용자 + 공고번호로 단건 조회
+    @Query("SELECT w FROM WatchlistItem w JOIN FETCH w.notice n WHERE w.user.id = :userId AND n.bidNtceNo = (SELECT t.bidNtceNo FROM Notice t WHERE t.id = :noticeId)")
     Optional<WatchlistItem> findByUserIdAndNoticeIdWithNotice(@Param("userId") Long userId, @Param("noticeId") Long noticeId);
 
-    // 기간 내 마감 건수 (D-3, D-7 공통 / 지정 상태만)
-    @Query("SELECT COUNT(w) FROM WatchlistItem w WHERE w.user.id = :userId AND w.notice.bidClseDt BETWEEN :now AND :deadline AND w.status IN :statuses")
+    // 기간 내 마감 건수 (D-3, D-7 공통 / 지정 상태만, 최신 차수만, 취소공고 제외)
+    @Query("SELECT COUNT(w) FROM WatchlistItem w WHERE w.user.id = :userId AND w.notice.bidClseDt BETWEEN :now AND :deadline AND w.status IN :statuses AND w.notice.latest = true AND (w.notice.ntceKindNm IS NULL OR w.notice.ntceKindNm <> '취소공고')")
     long countDeadlineBetweenAndStatusIn(@Param("userId") Long userId, @Param("now") LocalDateTime now, @Param("deadline") LocalDateTime deadline, @Param("statuses") List<WatchlistStatus> statuses);
 
     // 상태별 건수
@@ -42,6 +45,8 @@ public interface WatchlistItemRepository extends JpaRepository<WatchlistItem, Lo
         WHERE n.bidClseDt >= :start
           AND n.bidClseDt < :end
           AND w.status IN :statuses
+          AND n.latest = true
+          AND (n.ntceKindNm IS NULL OR n.ntceKindNm <> '취소공고')
           AND ns.emailNotificationEnabled = true
           AND (
                 (:remainingDays = 3 AND ns.d3Enabled = true)

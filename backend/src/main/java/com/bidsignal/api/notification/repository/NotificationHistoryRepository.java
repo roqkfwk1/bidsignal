@@ -1,5 +1,6 @@
 package com.bidsignal.api.notification.repository;
 
+import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.notification.domain.NotificationChannel;
 import com.bidsignal.api.notification.domain.NotificationHistory;
 import com.bidsignal.api.watchlist.domain.WatchlistItem;
@@ -17,15 +18,14 @@ import java.util.Optional;
 public interface NotificationHistoryRepository extends JpaRepository<NotificationHistory, Long> {
 
     // 중복 발송 확인
-    boolean existsByWatchlistItemAndChannelAndRemainingDaysAndSuccessTrue(WatchlistItem watchlistItem, NotificationChannel channel, int remainingDays);
+    boolean existsByWatchlistItemAndNoticeAndChannelAndRemainingDaysAndSuccessTrue(WatchlistItem watchlistItem, Notice notice, NotificationChannel channel, int remainingDays);
 
     // 사용자 알림 내역 조회
     @Query(
             value = """
                 SELECT h
                 FROM NotificationHistory h
-                JOIN FETCH h.watchlistItem w
-                JOIN FETCH w.notice n
+                JOIN FETCH h.notice n
                 WHERE h.user.id = :userId
                   AND h.success = true
                 ORDER BY h.createdAt DESC

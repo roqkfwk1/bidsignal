@@ -43,8 +43,9 @@ public class DeadlineNotificationService {
             for (WatchlistItem item : targets) {
 
                 // 중복 발송 확인
-                boolean alreadySent = notificationHistoryRepository.existsByWatchlistItemAndChannelAndRemainingDaysAndSuccessTrue(
+                boolean alreadySent = notificationHistoryRepository.existsByWatchlistItemAndNoticeAndChannelAndRemainingDaysAndSuccessTrue(
                                 item,
+                                item.getNotice(),
                                 NotificationChannel.EMAIL,
                                 remainingDay
                         );
@@ -69,6 +70,7 @@ public class DeadlineNotificationService {
                     NotificationHistory history = NotificationHistory.createSuccess(
                             item.getUser(),
                             item,
+                            item.getNotice(),
                             NotificationChannel.EMAIL,
                             remainingDay
                     );
@@ -79,6 +81,7 @@ public class DeadlineNotificationService {
                     NotificationHistory history = NotificationHistory.createFailure(
                             item.getUser(),
                             item,
+                            item.getNotice(),
                             NotificationChannel.EMAIL,
                             remainingDay,
                             e.getMessage()

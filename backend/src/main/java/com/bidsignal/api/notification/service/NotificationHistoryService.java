@@ -33,8 +33,8 @@ public class NotificationHistoryService {
 
         return histories.map(history -> NotificationHistoryResponse.builder()
                 .id(history.getId())
-                .noticeId(history.getWatchlistItem().getNotice().getId())
-                .noticeTitle(history.getWatchlistItem().getNotice().getBidNtceNm())
+                .noticeId(history.getNotice().getId())
+                .noticeTitle(history.getNotice().getBidNtceNm())
                 .channel(history.getChannel().name())
                 .remainingDays(history.getRemainingDays())
                 .sentAt(history.getCreatedAt())

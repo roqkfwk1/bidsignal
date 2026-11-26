@@ -68,12 +68,9 @@ class NotificationHistoryServiceTest {
         given(notice.getId()).willReturn(500L);
         given(notice.getBidNtceNm()).willReturn("테스트 공고");
 
-        WatchlistItem watchlistItem = mock(WatchlistItem.class);
-        given(watchlistItem.getNotice()).willReturn(notice);
-
         NotificationHistory history = mock(NotificationHistory.class);
         given(history.getId()).willReturn(100L);
-        given(history.getWatchlistItem()).willReturn(watchlistItem);
+        given(history.getNotice()).willReturn(notice);
         given(history.getChannel()).willReturn(NotificationChannel.EMAIL);
         given(history.getRemainingDays()).willReturn(3);
         given(history.isRead()).willReturn(false);
@@ -125,6 +122,7 @@ class NotificationHistoryServiceTest {
                 NotificationHistory.createSuccess(
                         createUser(),
                         mock(WatchlistItem.class),
+                        mock(Notice.class),
                         NotificationChannel.EMAIL,
                         3
                 );
