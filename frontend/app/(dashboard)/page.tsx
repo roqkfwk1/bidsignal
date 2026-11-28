@@ -186,11 +186,11 @@ export default function HomePage() {
 
   const retry = () => setReloadKey((k) => k + 1);
 
-  /* 우선 확인 공고: 검토중·준비중이면서 마감 전(D-Day 이후 아님)인 항목을 마감 가까운 순으로 */
+  /* 우선 확인 공고: 검토중·준비중이면서 마감 전(D-Day 이후 아님)인 항목을 마감 가까운 순으로. 취소된 공고는 제외 */
   const priorityItems = useMemo(
     () =>
       watchlist
-        .filter((w) => (w.status === 'REVIEWING' || w.status === 'PREPARING') && w.dDay !== null && w.dDay >= 0)
+        .filter((w) => !w.canceled && (w.status === 'REVIEWING' || w.status === 'PREPARING') && w.dDay !== null && w.dDay >= 0)
         .sort((a, b) => (a.dDay ?? 0) - (b.dDay ?? 0))
         .slice(0, PRIORITY_LIMIT),
     [watchlist],

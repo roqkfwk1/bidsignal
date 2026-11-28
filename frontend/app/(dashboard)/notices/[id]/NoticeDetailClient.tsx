@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
+  ArrowRight,
   Ban,
   ChevronDown,
   ExternalLink,
   FileSearch,
   FileText,
+  History,
   Sparkles,
   Star,
 } from 'lucide-react';
@@ -27,6 +29,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { DDayBadge } from '@/components/common/DDayBadge';
+import { CanceledBadge } from '@/components/common/CanceledBadge';
 import { StatusDropdown } from '@/components/common/StatusDropdown';
 import { SaveToast } from '@/components/common/SaveToast';
 import { ResultsError } from '@/components/notices/NoticeResults';
@@ -52,6 +55,7 @@ import {
 } from '@/lib/utils';
 import type {
   NoticeDetail,
+  NoticeVersion,
   WatchlistStatus,
   ChecklistResponse,
   ChecklistItemResponse,
@@ -143,6 +147,8 @@ export function NoticeDetailClient({ noticeId }: Props) {
   const [notFound, setNotFound]           = useState(!isValidId);
 
   const [isBookmarked, setIsBookmarked]       = useState(false);
+  /* 이전 차수 상세에서, 같은 공고번호가 최신 차수로 이미 저장돼 있는지 */
+  const [savedInLatest, setSavedInLatest]     = useState(false);
   const [watchlistStatus, setWatchlistStatus] = useState<WatchlistStatus>('REVIEWING');
   const [memo, setMemo]                       = useState('');
   const [showToast, setShowToast]             = useState(false);
@@ -163,6 +169,13 @@ export function NoticeDetailClient({ noticeId }: Props) {
       setLoading(true);
       setFetchError(false);
       setNotFound(false);
+      /* 차수 이력에서 다른 차수로 이동하면 이전 화면의 저장 상태가 남지 않게 초기화 */
+      setIsBookmarked(false);
+      setSavedInLatest(false);
+      setWatchlistStatus('REVIEWING');
+      setMemo('');
+      setChecklist(null);
+      setActiveTab('info');
 
       /* 비로그인 상태에서 watchlist API를 호출하면 401 → 전역 login redirect 발생하므로 토큰이 있을 때만 호출 */
       const isLoggedIn = !!localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -182,11 +195,15 @@ export function NoticeDetailClient({ noticeId }: Props) {
         return;
       }
 
-      setNotice(noticeResult.value);
+      const detail = noticeResult.value;
+      setNotice(detail);
 
       if (watchlistResult.status === 'fulfilled') {
-        const saved = watchlistResult.value.find((w) => w.noticeId === noticeId);
-        if (saved) {
+        /* 관심 공고는 항상 최신 차수를 가리키므로 공고번호로 찾는다 */
+        const saved = watchlistResult.value.find((w) => w.bidNtceNo === detail.bidNtceNo);
+        if (saved && !detail.latest) {
+          setSavedInLatest(true);
+        } else if (saved) {
           setIsBookmarked(true);
           setWatchlistStatus(saved.status);
           setMemo(saved.memo ?? '');
@@ -220,7 +237,9 @@ export function NoticeDetailClient({ noticeId }: Props) {
   }, [noticeId]);
 
   async function handleToggleSave() {
-    if (!notice) return;
+    if (!notice || !notice.latest) return;
+    /* 취소된 공고는 새로 담지 않는다 (이미 담은 공고의 해제는 허용) */
+    if (notice.canceled && !isBookmarked) return;
 
     if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
       setShowLoginModal(true);
@@ -349,9 +368,10 @@ export function NoticeDetailClient({ noticeId }: Props) {
   const agency       = notice.dminsttNm || notice.ntceInsttNm;
   const attachments  = notice.attachments ?? [];
 
-  /* 공고 종류: 변경공고/취소공고만 표시 (등록공고·재공고 등 그 외 값은 표시하지 않음) */
+  /* 공고 종류: 변경공고만 배지로 표시. 취소는 최신 차수 기준(canceled)으로 따로 표시 */
   const kind        = notice.ntceKindNm?.trim();
-  const isCancelled = kind === '취소공고';
+  const isCancelled = notice.canceled;
+  const isLatest    = notice.latest;
   const isChanged   = kind === '변경공고';
   const ordText     = notice.bidNtceOrd?.trim() ? `차수 ${notice.bidNtceOrd.trim()}` : null;
 
@@ -371,25 +391,46 @@ export function NoticeDetailClient({ noticeId }: Props) {
     <div className="flex min-w-0 flex-col gap-6">
       <BackLink />
 
-      {/* ── 취소공고 안내 ── */}
+      {/* ── 이전 차수 안내 ── */}
+      {!isLatest && (
+        <div
+          role="note"
+          className="flex flex-col gap-3 rounded-[10px] border border-primary/25 bg-accent px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <History aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
+            <p className="text-base text-foreground">
+              이 공고는 이전 차수입니다. 최신 차수 공고에서 변경된 내용을 확인하세요.
+            </p>
+          </div>
+          <Button asChild className={cn(controlHeight, 'shrink-0 px-4')}>
+            <Link href={`/notices/${notice.latestNoticeId}`}>
+              최신 차수 보기
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      {/* ── 취소 안내 ── */}
       {isCancelled && (
         <div
           role="note"
           className="flex items-start gap-3 rounded-[10px] border border-destructive/40 bg-destructive-soft px-4 py-3.5"
         >
           <Ban aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" />
-          <div className="min-w-0">
-            <p className="text-base font-bold text-destructive">취소공고</p>
-            <p className="text-base text-foreground">
-              이 공고는 취소공고입니다. 취소 사유와 이후 일정은 공고 원문에서 확인하세요.
-            </p>
-          </div>
+          <p className="min-w-0 text-base text-foreground">
+            {isLatest
+              ? '이 공고는 취소되었습니다. 취소 사유는 공고 원문에서 확인하세요.'
+              : '이 공고번호는 이후 차수에서 취소되었습니다. 최신 차수에서 취소 내용을 확인하세요.'}
+          </p>
         </div>
       )}
 
       {/* ── 공고명 헤더 ── */}
       <header className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground">
+          {isCancelled && <CanceledBadge />}
           <span className="rounded-md border border-border px-1.5 leading-6">{bidType}</span>
           <span className="tabular-nums wrap-anywhere">{noticeNumber}</span>
           {isChanged && (
@@ -412,15 +453,26 @@ export function NoticeDetailClient({ noticeId }: Props) {
           aria-label="마감과 관심 공고"
           className={cn(card, 'order-1 flex flex-col gap-4 p-5 lg:col-start-2 lg:row-start-1')}
         >
-          <div>
-            <p className="text-base text-muted-foreground">마감까지</p>
-            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3">
-              <span className="text-[28px] leading-tight font-bold tabular-nums [&>span]:text-[28px]">
-                <DDayBadge dDay={dDay} deadline={deadline} />
-              </span>
-              <span className="text-base text-foreground tabular-nums">{formatDateTime(notice.bidClseDt)}</span>
+          {isCancelled ? (
+            /* 취소된 공고는 D-Day를 숨기고 마감일만 흐리게 */
+            <div>
+              <p className="text-base text-muted-foreground">마감일</p>
+              <p className="mt-0.5 text-base text-muted-foreground line-through tabular-nums">
+                {formatDateTime(notice.bidClseDt)}
+              </p>
+              <p className="mt-1 text-base text-muted-foreground">취소된 공고라 마감 일정이 적용되지 않아요.</p>
             </div>
-          </div>
+          ) : (
+            <div>
+              <p className="text-base text-muted-foreground">마감까지</p>
+              <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3">
+                <span className="text-[28px] leading-tight font-bold tabular-nums [&>span]:text-[28px]">
+                  <DDayBadge dDay={dDay} deadline={deadline} />
+                </span>
+                <span className="text-base text-foreground tabular-nums">{formatDateTime(notice.bidClseDt)}</span>
+              </div>
+            </div>
+          )}
 
           <dl className="flex flex-col divide-y divide-border border-y border-border text-base">
             <div className="flex items-baseline justify-between gap-3 py-2.5">
@@ -450,7 +502,20 @@ export function NoticeDetailClient({ noticeId }: Props) {
           </dl>
 
           <div className="flex flex-col gap-2">
-            {isBookmarked ? (
+            {!isLatest ? (
+              /* 관심 공고는 최신 차수에만 담는다 */
+              <>
+                <Button type="button" disabled className={cn(controlHeight, 'w-full px-4')}>
+                  <Star aria-hidden="true" className={cn('size-5', savedInLatest && 'fill-current')} />
+                  {savedInLatest ? '관심 공고에 저장됨' : '관심 공고에 추가'}
+                </Button>
+                <p className="text-base leading-relaxed text-muted-foreground">
+                  {savedInLatest
+                    ? '최신 차수로 저장되어 있어요. 진행 상태와 메모는 최신 차수에서 관리하세요.'
+                    : '이전 차수는 담을 수 없어요. 최신 차수에서 담아주세요.'}
+                </p>
+              </>
+            ) : isBookmarked ? (
               <Button
                 type="button"
                 variant="outline"
@@ -460,6 +525,14 @@ export function NoticeDetailClient({ noticeId }: Props) {
                 <Star aria-hidden="true" className="size-5 fill-primary text-primary" />
                 관심 공고 해제
               </Button>
+            ) : isCancelled ? (
+              <>
+                <Button type="button" disabled className={cn(controlHeight, 'w-full px-4')}>
+                  <Star aria-hidden="true" className="size-5" />
+                  관심 공고에 추가
+                </Button>
+                <p className="text-base leading-relaxed text-muted-foreground">취소된 공고는 담을 수 없습니다.</p>
+              </>
             ) : (
               <>
                 <Button
@@ -561,7 +634,7 @@ export function NoticeDetailClient({ noticeId }: Props) {
                   <InfoItem label="예산금액" value={amount} />
                   <InfoItem label="게시일" value={formatDateTime(notice.bidNtceDt)} />
                   <InfoItem label="입찰 시작" value={formatDateTime(notice.bidBeginDt)} />
-                  <InfoItem label="입찰 마감" value={formatDateTime(notice.bidClseDt)} emphasize={dDay !== null && dDay >= 0 && dDay <= 3} />
+                  <InfoItem label="입찰 마감" value={formatDateTime(notice.bidClseDt)} emphasize={!isCancelled && dDay !== null && dDay >= 0 && dDay <= 3} />
                   <InfoItem label="개찰일" value={formatDateTime(notice.opengDt)} />
                 </dl>
               </TabsContent>
@@ -647,6 +720,12 @@ export function NoticeDetailClient({ noticeId }: Props) {
               />
             ) : null
           )}
+
+          <VersionHistorySection
+            versions={notice.versions ?? []}
+            currentId={notice.id}
+            latestId={notice.latestNoticeId}
+          />
         </div>
       </div>
 
@@ -699,6 +778,128 @@ function InfoItem({
         )}
       </dd>
     </div>
+  );
+}
+
+/* 공고종류 배지 색: 취소·변경만 포인트 색, 나머지는 중립 */
+function kindBadgeClass(kind: string | null): string {
+  if (kind === '취소공고') return 'bg-destructive-soft text-destructive';
+  if (kind === '변경공고') return 'bg-accent text-primary';
+  return 'bg-muted text-foreground';
+}
+
+/* 이전 차수와 값이 다르면 "이전 값 → 바뀐 값"으로 표시. 첫 차수는 previousValue 없이 호출 */
+function VersionDate({
+  label,
+  value,
+  previousValue,
+}: {
+  label: string;
+  value: string | null;
+  previousValue?: string | null;
+}) {
+  const current = formatDateTime(value);
+  const previous = previousValue === undefined ? null : formatDateTime(previousValue);
+  const changed = previous !== null && previous !== current;
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="flex min-w-0 flex-wrap items-center gap-x-1.5 tabular-nums">
+        {changed ? (
+          <>
+            <span className="text-muted-foreground">{previous}</span>
+            <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground" />
+            <span className="sr-only">에서</span>
+            <span className="font-semibold text-foreground">{current}</span>
+            <span className="sr-only">(으)로 변경</span>
+          </>
+        ) : (
+          <span className="text-foreground">{current}</span>
+        )}
+      </dd>
+    </div>
+  );
+}
+
+function VersionHistorySection({
+  versions,
+  currentId,
+  latestId,
+}: {
+  versions: NoticeVersion[];
+  currentId: number;
+  latestId: number;
+}) {
+  if (versions.length <= 1) return null;
+
+  return (
+    <section aria-labelledby="version-history-heading" className={cn(card, 'p-5 sm:p-6')}>
+      <h2 id="version-history-heading" className="flex items-center gap-1.5 text-base font-bold text-foreground">
+        <History aria-hidden="true" className="size-4 text-primary" />
+        차수 이력
+      </h2>
+      <p className="mt-1 text-base text-muted-foreground">
+        공고가 변경되거나 취소되면 같은 공고번호로 차수가 올라가요. 항목을 누르면 그 차수의 공고로 이동해요.
+      </p>
+
+      <ol className="mt-5 flex flex-col">
+        {versions.map((version, index) => {
+          const previous = index > 0 ? versions[index - 1] : null;
+          const isCurrent = version.id === currentId;
+          const kind = version.ntceKindNm?.trim() || null;
+
+          return (
+            <li
+              key={version.id}
+              /* 타임라인 세로선: 첫 항목은 점부터, 마지막 항목은 점까지 */
+              className="relative pl-7 before:absolute before:top-0 before:bottom-0 before:left-[7px] before:w-px before:bg-border first:before:top-6 last:before:bottom-auto last:before:h-6"
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute top-[18px] left-0 size-[15px] rounded-full border-2',
+                  isCurrent ? 'border-primary bg-primary' : 'border-border bg-card',
+                )}
+              />
+              <Link
+                href={`/notices/${version.id}`}
+                aria-current={isCurrent ? 'page' : undefined}
+                className={cn(
+                  'mb-2 flex flex-col gap-2 rounded-lg px-4 py-3 text-base transition-colors',
+                  isCurrent ? 'bg-accent ring-1 ring-primary/25' : 'hover:bg-accent/60',
+                  focusRing,
+                )}
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-bold text-foreground tabular-nums">차수 {version.bidNtceOrd.trim()}</span>
+                  <span className={cn('rounded-md px-2 leading-7 font-medium', kindBadgeClass(kind))}>
+                    {kind ?? '공고종류 없음'}
+                  </span>
+                  {version.id === latestId && <span className="text-muted-foreground">최신</span>}
+                  {isCurrent && <span className="font-medium text-primary">보고 있는 차수</span>}
+                  <span className="text-muted-foreground tabular-nums sm:ml-auto">
+                    등록 {formatDateTime(version.rgstDt)}
+                  </span>
+                </div>
+                <dl className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-6">
+                  <VersionDate
+                    label="마감"
+                    value={version.bidClseDt}
+                    previousValue={previous ? previous.bidClseDt : undefined}
+                  />
+                  <VersionDate
+                    label="개찰"
+                    value={version.opengDt}
+                    previousValue={previous ? previous.opengDt : undefined}
+                  />
+                </dl>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 

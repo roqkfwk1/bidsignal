@@ -51,6 +51,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const deadline = formatIsoDate(notice.bidClseDt);
   const title = `${notice.bidNtceNm} - ${agency} | BidSignal`;
   const description = `"${notice.bidNtceNm}" 공고입니다. 발주기관: ${agency}, 입찰 마감일: ${deadline}.`;
+  /* 이전 차수는 최신 차수 주소를 대표 주소로 지정 */
+  const canonical = notice.latest ? `/notices/${notice.id}` : `/notices/${notice.latestNoticeId}`;
 
   return {
     title,
@@ -58,14 +60,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title,
       description,
-      url: `/notices/${id}`,
+      url: canonical,
       siteName: 'BidSignal',
       locale: 'ko_KR',
       type: 'website',
     },
     alternates: {
-      canonical: `/notices/${id}`,
+      canonical,
     },
+    /* 취소된 공고는 검색 결과에 노출하지 않는다 */
+    ...(notice.canceled ? { robots: { index: false, follow: true } } : {}),
   };
 }
 

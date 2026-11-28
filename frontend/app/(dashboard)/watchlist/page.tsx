@@ -38,6 +38,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { DDayBadge } from '@/components/common/DDayBadge';
+import { CanceledBadge } from '@/components/common/CanceledBadge';
 import { StatusDropdown } from '@/components/common/StatusDropdown';
 import { ResultsError } from '@/components/notices/NoticeResults';
 import { getWatchlist, deleteWatchlist, updateWatchlistStatus } from '@/lib/api/watchlist';
@@ -202,12 +203,16 @@ function WatchlistRow({
         <RowMenu item={item} onRequestDelete={onRequestDelete} className="-mt-2 -mr-2" />
       </div>
 
+      {item.canceled && <CanceledBadge className="self-start" />}
+
       <p className="truncate text-base text-muted-foreground">{item.ntceInsttNm}</p>
 
-      {/* 마감 + 체크리스트 진행을 한 줄로 */}
+      {/* 마감 + 체크리스트 진행을 한 줄로. 취소된 공고는 D-Day 강조 없이 흐리게 */}
       <p className="flex flex-wrap items-baseline gap-x-2 text-base">
         <span className="sr-only">마감</span>
-        {dim ? (
+        {item.canceled ? (
+          <span className="text-base text-muted-foreground" title={deadline}>{dDayText(item.dDay)}</span>
+        ) : dim ? (
           <span className={cn('text-base', dim)} title={deadline}>{dDayText(item.dDay)}</span>
         ) : (
           <DDayBadge dDay={item.dDay} deadline={deadline} />
@@ -342,7 +347,9 @@ function WatchlistTableRow({
 }) {
   const dim = DIM_TEXT[item.status];
   const isUrgent = item.dDay !== null && item.dDay >= 0 && item.dDay <= DDAY_WARNING_THRESHOLD;
-  const dDayClass = dim
+  const dDayClass = item.canceled
+    ? 'font-normal text-muted-foreground'
+    : dim
     ? dim
     : isUrgent
       ? 'text-destructive'
@@ -376,6 +383,7 @@ function WatchlistTableRow({
           >
             {item.bidNtceNm}
           </Link>
+          {item.canceled && <CanceledBadge />}
           {item.memo && (
             /* xl 미만은 메모 열이 없어서 표시만 남긴다 */
             <span
@@ -638,10 +646,11 @@ function WatchlistContent() {
     let list = [...items];
 
     if (dueWithin !== 'all' || dueFrom !== null) {
-      /* 하한 기본값 0 — 이미 마감된 공고(dDay < 0)는 제외. 상한이 없으면 하한만 적용 */
+      /* 하한 기본값 0 — 이미 마감된 공고(dDay < 0)는 제외. 상한이 없으면 하한만 적용.
+         취소된 공고는 마감 일정이 없으므로 제외 (홈의 오늘 할 일 건수와 같은 기준) */
       const min = dueFrom ?? 0;
       const max = dueWithin === 'all' ? Infinity : Number(dueWithin);
-      list = list.filter((n) => n.dDay !== null && n.dDay >= min && n.dDay <= max);
+      list = list.filter((n) => !n.canceled && n.dDay !== null && n.dDay >= min && n.dDay <= max);
     }
 
     if (activeOnly) {

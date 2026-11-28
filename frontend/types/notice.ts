@@ -32,6 +32,16 @@ export interface NoticeAttachment {
   fileUrl: string;
 }
 
+// 같은 공고번호의 차수 이력 (차수 오름차순)
+export interface NoticeVersion {
+  id: number;
+  bidNtceOrd: string;
+  ntceKindNm: string | null;
+  rgstDt: string | null;
+  bidClseDt: string | null;
+  opengDt: string | null;
+}
+
 export interface NoticeDetail extends NoticeListItem {
   reNtceYn: string;
   bidNtceDt: string;
@@ -46,6 +56,10 @@ export interface NoticeDetail extends NoticeListItem {
   bidPrceEvlRt: number | string | null;
   attachments: NoticeAttachment[];
   aiSummary: string | null;
+  latest: boolean;
+  latestNoticeId: number;
+  canceled: boolean;          // 최신 차수가 취소공고인지
+  versions: NoticeVersion[];
 }
 
 // ── 백엔드 관심 공고 응답 ─────────────────────────────────────────────
@@ -59,6 +73,7 @@ export interface WatchlistItem {
   bidClseDt: string;
   status: WatchlistStatus;
   memo: string;
+  canceled: boolean;
   dDay: number | null;
   checklistTotalCount: number;
   checklistCheckedCount: number;
