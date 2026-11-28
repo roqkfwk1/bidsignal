@@ -9,6 +9,7 @@ import com.bidsignal.api.notice.repository.NoticeAttachmentRepository;
 import com.bidsignal.api.notice.repository.NoticeRepository;
 import com.bidsignal.api.notice.service.NoticeSaveService;
 import com.bidsignal.api.notification.domain.NotificationSetting;
+import com.bidsignal.api.notification.repository.NoticeChangeNotificationRepository;
 import com.bidsignal.api.notification.repository.NotificationHistoryRepository;
 import com.bidsignal.api.notification.repository.NotificationSettingRepository;
 import com.bidsignal.api.notification.service.DeadlineNotificationService;
@@ -83,6 +84,9 @@ class WatchlistVersionIntegrationTest {
     NotificationHistoryRepository notificationHistoryRepository;
 
     @Autowired
+    NoticeChangeNotificationRepository noticeChangeNotificationRepository;
+
+    @Autowired
     NotificationSettingRepository notificationSettingRepository;
 
     @Autowired
@@ -90,6 +94,7 @@ class WatchlistVersionIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        noticeChangeNotificationRepository.deleteAllInBatch();
         notificationHistoryRepository.deleteAllInBatch();
         checklistItemRepository.deleteAllInBatch();
         watchlistItemRepository.deleteAllInBatch();

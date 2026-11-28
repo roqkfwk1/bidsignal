@@ -5,6 +5,7 @@ import com.bidsignal.api.global.exception.ErrorCode;
 import com.bidsignal.api.global.security.jwt.JwtProvider;
 import com.bidsignal.api.global.security.jwt.RefreshTokenService;
 import com.bidsignal.api.notification.domain.NotificationSetting;
+import com.bidsignal.api.notification.repository.NoticeChangeNotificationRepository;
 import com.bidsignal.api.notification.repository.NotificationSettingRepository;
 import com.bidsignal.api.user.domain.User;
 import com.bidsignal.api.user.dto.request.UserLoginRequest;
@@ -28,6 +29,7 @@ public class UserService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
     private final NotificationSettingRepository notificationSettingRepository;
+    private final NoticeChangeNotificationRepository noticeChangeNotificationRepository;
     private final WatchlistService watchlistService;
 
     // 회원가입
@@ -131,6 +133,7 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         watchlistService.deleteAllWatchlistItems(userId);
+        noticeChangeNotificationRepository.deleteByUser(user);
         notificationSettingRepository.deleteByUser(user);
         refreshTokenService.deleteByUserId(userId);
         userRepository.delete(user);

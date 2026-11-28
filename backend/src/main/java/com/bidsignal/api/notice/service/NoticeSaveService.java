@@ -4,6 +4,7 @@ import com.bidsignal.api.notice.domain.Notice;
 import com.bidsignal.api.notice.domain.NoticeAttachment;
 import com.bidsignal.api.notice.repository.NoticeAttachmentRepository;
 import com.bidsignal.api.notice.repository.NoticeRepository;
+import com.bidsignal.api.notification.service.NoticeChangeNotificationService;
 import com.bidsignal.api.watchlist.domain.WatchlistItem;
 import com.bidsignal.api.watchlist.repository.WatchlistItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class NoticeSaveService {
     private final NoticeRepository noticeRepository;
     private final NoticeAttachmentRepository noticeAttachmentRepository;
     private final WatchlistItemRepository watchlistItemRepository;
+    private final NoticeChangeNotificationService noticeChangeNotificationService;
 
     /**
      * 새 공고를 저장하고 같은 공고번호의 최신 차수 여부를 갱신한다.
@@ -43,8 +45,11 @@ public class NoticeSaveService {
 
         noticeRepository.save(notice);
 
-        if (notice.isLatest()) {
-            moveWatchlistItems(savedNotices, notice);
+        if (notice.isLatest() && !savedNotices.isEmpty()) {
+            List<WatchlistItem> movedWatchlistItems = moveWatchlistItems(savedNotices, notice);
+            Notice previousNotice = savedNotices.get(savedNotices.size() - 1);
+
+            noticeChangeNotificationService.createNotifications(movedWatchlistItems, previousNotice, notice);
         }
 
         if (!attachments.isEmpty()) {
@@ -72,13 +77,9 @@ public class NoticeSaveService {
     }
 
     /**
-     * 이전 차수를 가리키는 관심 공고를 최신 차수로 옮긴다.
+     * 이전 차수를 가리키는 관심 공고를 최신 차수로 옮기고 옮긴 관심 공고를 반환한다.
      */
-    private void moveWatchlistItems(List<Notice> savedNotices, Notice latestNotice) {
-
-        if (savedNotices.isEmpty()) {
-            return;
-        }
+    private List<WatchlistItem> moveWatchlistItems(List<Notice> savedNotices, Notice latestNotice) {
 
         List<Long> savedNoticeIds = new ArrayList<>();
 
@@ -88,6 +89,7 @@ public class NoticeSaveService {
 
         List<WatchlistItem> watchlistItems = watchlistItemRepository.findByNoticeIdInOrderByIdAsc(savedNoticeIds);
         Set<Long> movedUserIds = new HashSet<>();
+        List<WatchlistItem> movedWatchlistItems = new ArrayList<>();
 
         for (WatchlistItem watchlistItem : watchlistItems) {
 
@@ -100,6 +102,9 @@ public class NoticeSaveService {
             }
 
             watchlistItem.updateNotice(latestNotice);
+            movedWatchlistItems.add(watchlistItem);
         }
+
+        return movedWatchlistItems;
     }
 }
