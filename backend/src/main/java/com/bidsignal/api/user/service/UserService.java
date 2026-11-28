@@ -31,19 +31,26 @@ public class UserService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final NoticeChangeNotificationRepository noticeChangeNotificationRepository;
     private final WatchlistService watchlistService;
+    private final EmailVerificationService emailVerificationService;
 
     // 회원가입
     @Transactional
     public UserResponse signup(UserSignupRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String email = User.normalizeEmail(request.getEmail());
+
+        if (!emailVerificationService.isVerified(email)) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
         User user = User.create(
-                request.getEmail(),
+                email,
                 encodedPassword,
                 request.getNickname(),
                 request.getPhoneNumber()
@@ -54,13 +61,15 @@ public class UserService {
         NotificationSetting setting = NotificationSetting.createDefault(savedUser);
         notificationSettingRepository.save(setting);
 
+        emailVerificationService.deleteVerified(email);
+
         return UserResponse.from(savedUser);
     }
 
     // 로그인
     public TokenResponse login(UserLoginRequest request) {
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(User.normalizeEmail(request.getEmail()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_LOGIN));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {

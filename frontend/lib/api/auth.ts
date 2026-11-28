@@ -1,5 +1,26 @@
 import { apiFetch, BASE_URL, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../api';
-import type { TokenResponse, UserResponse } from '@/types/notice';
+import type {
+  EmailVerificationSendRequest,
+  EmailVerificationVerifyRequest,
+  TokenResponse,
+  UserResponse,
+} from '@/types/notice';
+
+export async function sendEmailVerificationCode(email: string): Promise<void> {
+  const body: EmailVerificationSendRequest = { email };
+  await apiFetch<void>('/auth/email/send', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function verifyEmailCode(email: string, code: string): Promise<void> {
+  const body: EmailVerificationVerifyRequest = { email, code };
+  await apiFetch<void>('/auth/email/verify', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
 
 export async function signup(
   email: string,

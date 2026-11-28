@@ -124,6 +124,16 @@ export interface TokenResponse {
   refreshToken: string;
 }
 
+// ── 이메일 인증 요청 ──────────────────────────────────────────────────
+export interface EmailVerificationSendRequest {
+  email: string;
+}
+
+export interface EmailVerificationVerifyRequest {
+  email: string;
+  code: string;
+}
+
 // ── 유저 응답 ────────────────────────────────────────────────────────
 export interface UserResponse {
   id: number;

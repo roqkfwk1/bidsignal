@@ -16,6 +16,17 @@ const REFRESH_TOKEN_KEY = 'bidsignal_refresh_token';
 
 export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY };
 
+/* 백엔드 에러 코드(ApiResponse.code)를 함께 전달한다. message는 기존과 같다. */
+export class ApiError extends Error {
+  code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+  }
+}
+
 function forceLogout(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -100,7 +111,7 @@ export async function apiFetch<T>(
       forceLogout();
       return new Promise<T>(() => {});
     }
-    throw new Error(errJson?.message ?? `API error: ${res.status}`);
+    throw new ApiError(errJson?.message ?? `API error: ${res.status}`, errJson?.code);
   }
 
   // 204 No Content 또는 빈 응답 처리

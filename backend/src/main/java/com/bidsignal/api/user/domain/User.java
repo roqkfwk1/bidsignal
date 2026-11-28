@@ -6,6 +6,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Locale;
+
 @Entity
 @Table(name = "users")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,5 +37,12 @@ public class User extends BaseEntity {
         user.nickname = nickname;
         user.phoneNumber = phoneNumber;
         return user;
+    }
+
+    /**
+     * 이메일의 앞뒤 공백을 지우고 소문자로 바꾼다.
+     */
+    public static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }

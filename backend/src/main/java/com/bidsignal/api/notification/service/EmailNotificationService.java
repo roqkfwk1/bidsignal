@@ -110,6 +110,32 @@ public class EmailNotificationService {
     }
 
     /**
+     * 이메일 인증번호를 발송한다.
+     */
+    public void sendEmailVerificationCodeEmail(String toEmail, String code) {
+
+        String subject = "[BidSignal] 이메일 인증번호";
+
+        String body = """
+                안녕하세요. BidSignal입니다.
+
+                회원가입을 위한 이메일 인증번호입니다.
+
+                인증번호: %s
+
+                5분 안에 입력해 주세요.
+                """.formatted(code);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject(subject);
+        message.setText(body);
+
+        mailSender.send(message);
+    }
+
+    /**
      * 메일에 쓸 날짜를 문자열로 바꾼다.
      */
     private String formatDateTime(LocalDateTime dateTime) {
